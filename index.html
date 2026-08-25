@@ -220,7 +220,10 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
           <div class="credits-chip"><span class="dot"></span><span id="menuCredits">0</span></div>
           <div class="credits-chip cores"><span class="dot hex"></span><span id="menuCores">0</span></div>
         </div>
-        <button class="btn ghost" id="btnStory">Histoire</button>
+        <div style="display:flex; gap:6px;">
+          <button class="btn ghost" id="btnStory">Histoire</button>
+          <button class="btn ghost" id="btnCodex">Codex</button>
+        </div>
       </div>
       <button class="btn" id="btnCampaign">Campagne</button>
       <button class="btn secondary" id="btnModes">Modes spéciaux</button>
@@ -237,6 +240,20 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
       <div class="btn-row" style="margin-top:16px;">
         <button class="btn" id="storyContinue">Continuer</button>
       </div>
+    </div>
+  </section>
+
+  <!-- CODEX -->
+  <section class="screen" id="scr-codex">
+    <div class="panel">
+      <h2 class="section-title">Codex</h2>
+      <div class="scroll-area" style="max-height:64vh;">
+        <p class="small" style="margin:0 0 4px;">L'ÉQUIPAGE</p>
+        <div id="codexCrew" class="menu-stack"></div>
+        <p class="small" style="margin:14px 0 4px;">SIGNATURES DU NULL</p>
+        <div id="codexEnemies" class="menu-stack"></div>
+      </div>
+      <button class="btn ghost" id="backFromCodex" style="margin-top:12px;">Retour</button>
     </div>
   </section>
 
@@ -527,6 +544,18 @@ const ENEMY_DEFS={
   gunship:{hp:44, speed:108, r:22, dmg:20, credit:5, color:'#ffb14d', shoots:true, missileChance:0.1},
   cruiser:{hp:64, speed:92, r:26, dmg:24, credit:8, color:'#ff4de0', shoots:true, missileChance:0.32},
 };
+const ENEMY_LORE={
+  drone:{name:'Drone Éclaireur', desc:"Automate jetable du Null. Seul, inoffensif ; en escadrille, submergeant. Il fonce droit devant sans réfléchir — il n'a pas de quoi réfléchir."},
+  corvette:{name:'Corvette Faucheuse', desc:"Plus agile que le drone, elle louvoie pour éviter les tirs. VESTA ignore si c'est de l'intelligence ou un simple défaut de fabrication devenu utile."},
+  gunship:{name:'Chasseur Lourd', desc:"Premier modèle du Null à embarquer un armement offensif. VESTA soupçonne qu'il a été assemblé à partir de vaisseaux capturés plutôt que construit depuis zéro."},
+  cruiser:{name:'Croiseur Sentinelle', desc:"Rare et redoutable : missiles à tête chercheuse, coque renforcée. Sa seule apparition suffit à faire taire les blagues de VESTA — un temps."},
+  boss:{name:'Sentinelle du Null', desc:"Le cœur de chaque essaim régional. Rien ne l'égale en dangerosité, sauf peut-être la suivante."},
+};
+const CREW_LORE=[
+  {name:'Kae Solari', role:'Pilote', desc:"Ex-contrebandière, dettes de jeu, sens de l'à-propos discutable. Pilote l'Aurora-9 depuis que Kess, son système natal, s'est retrouvé sur la route du Null."},
+  {name:'VESTA', role:"IA de bord", desc:"Sarcastique, précise au dixième de pourcent près, et débitrice envers Kae d'une dette de jeu qu'elle nie obstinément."},
+  {name:'Miso', role:'Passager clandestin', desc:"Chat increvable planqué dans la soute depuis le premier jour. Personne ne sait comment il est monté à bord. Personne n'ose le débarquer."},
+];
 
 /* ================= INPUT ================= */
 const keys={};
@@ -1012,6 +1041,30 @@ onClick(document.getElementById('storyContinue'), ()=>{
   if(storyPendingLevelStart!==null){ const lv=storyPendingLevelStart; storyPendingLevelStart=null; launchLevel(lv); }
   else { showScreen('scr-menu'); refreshMenuCredits(); }
 });
+
+function buildLoreCard(title, sub, desc){
+  const card=document.createElement('div'); card.className='stat-row'; card.style.alignItems='flex-start';
+  card.innerHTML=`<div class="info"><div class="name">${title}${sub?` <span style="color:var(--ghost-dim); font-weight:500; font-size:11px;">· ${sub}</span>`:''}</div><div class="desc" style="margin-top:4px; line-height:1.4;">${desc}</div></div>`;
+  return card;
+}
+function openCodex(){
+  const crewWrap=document.getElementById('codexCrew'); crewWrap.innerHTML='';
+  CREW_LORE.forEach(c=>crewWrap.appendChild(buildLoreCard(c.name, c.role, c.desc)));
+  const enemiesWrap=document.getElementById('codexEnemies'); enemiesWrap.innerHTML='';
+  const unlockedTypes=['drone'];
+  if(P.unlockedLevel>=2) unlockedTypes.push('corvette');
+  if(P.unlockedLevel>=6) unlockedTypes.push('gunship');
+  if(P.unlockedLevel>=12) unlockedTypes.push('cruiser');
+  if(P.unlockedLevel>=5) unlockedTypes.push('boss');
+  for(const type of ['drone','corvette','gunship','cruiser','boss']){
+    const lore=ENEMY_LORE[type];
+    if(unlockedTypes.includes(type)){ enemiesWrap.appendChild(buildLoreCard(lore.name, null, lore.desc)); }
+    else { enemiesWrap.appendChild(buildLoreCard('??? ', null, "Signature non répertoriée. Progresse dans la campagne pour l'identifier.")); }
+  }
+  showScreen('scr-codex');
+}
+onClick(document.getElementById('btnCodex'), openCodex);
+onClick(document.getElementById('backFromCodex'), ()=>showScreen('scr-menu'));
 
 function openLevelSelect(){
   const wrap=document.getElementById('sectorBlocks'); wrap.innerHTML='';
