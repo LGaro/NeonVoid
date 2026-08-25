@@ -114,8 +114,8 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
 .dot.hex{background:var(--violet); box-shadow:0 0 8px var(--violet); transform:none; clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%); width:11px; height:11px; display:inline-block;}
 #toast{transition:opacity .3s;}
 
-.tabs{display:flex; gap:6px; border-bottom:1px solid var(--panel-edge); padding-bottom:8px; margin-bottom:4px;}
-.tab{flex:1; text-align:center; padding:8px 4px; font-family:var(--font-display); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ghost-dim); border-bottom:2px solid transparent; cursor:pointer;}
+.tabs{display:flex; gap:4px; border-bottom:1px solid var(--panel-edge); padding-bottom:8px; margin-bottom:4px;}
+.tab{flex:1; min-width:0; text-align:center; padding:8px 2px; font-family:var(--font-display); font-size:9.5px; letter-spacing:.03em; text-transform:uppercase; color:var(--ghost-dim); border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .tab.active{color:var(--cyan); border-color:var(--cyan);}
 
 .scroll-area{max-height:48vh; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding-right:4px;}
@@ -296,6 +296,16 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
     </div>
   </section>
 
+  <!-- INTERSTITIAL AD (simulé) -->
+  <section class="screen" id="scr-interstitial">
+    <div class="panel menu-stack" style="text-align:center; align-items:center;">
+      <h2 class="section-title">Publicité</h2>
+      <p class="lede small">Emplacement publicitaire (aperçu) — une vraie régie s'intègre ici dans la version App Store. Achète "Retirer les publicités" en Boutique pour les désactiver.</p>
+      <div id="adCountdown" style="font-family:var(--font-display); font-weight:800; font-size:44px; color:var(--gold); text-shadow:0 0 14px rgba(255,207,77,.5);">3</div>
+      <button class="btn" id="adContinue" style="width:100%;" disabled>Continuer (3)</button>
+    </div>
+  </section>
+
   <!-- END OF RUN -->
   <section class="screen" id="scr-end">
     <div class="panel menu-stack">
@@ -341,7 +351,7 @@ function defaultProfile(){
     credits:0, cores:0, unlockedLevel:0,
     upgrades:{damage:0,fireRate:0,health:0,shield:0,magnet:0},
     modules:[], equippedModules:[], ownedSkins:['default'], equippedSkin:'default',
-    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0,
+    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0, runsCompleted:0, noAds:false,
     sectorsSeen:[false,false,false,false,false,false],
   };
 }
@@ -444,16 +454,16 @@ function computeBaseStats(){
 }
 const MAX_EQUIPPED_MODULES=2;
 const PERKS=[
- {id:'turbo', name:'Turbo', desc:'Vitesse de déplacement fortement augmentée.', cost:4},
- {id:'greed', name:'Cupidité', desc:'+50% de crédits gagnés en mission.', cost:5},
- {id:'compact', name:'Compression', desc:'Vaisseau réduit : bien plus dur à toucher.', cost:6},
- {id:'double', name:'Double Tir', desc:'Deux tirs parallèles au lieu d\'un.', cost:8},
- {id:'heavy', name:'Canon Lourd', desc:'+40% dégâts, -20% cadence de tir.', cost:8},
- {id:'regen', name:'Bouclier Réactif', desc:'Régénère un bouclier au fil du temps.', cost:9},
- {id:'ricochet', name:'Ricochet', desc:'Vos tirs rebondissent une fois vers un ennemi proche.', cost:10},
- {id:'density', name:'Densité Négative', desc:'Vaisseau compacté : plus il est petit, plus il frappe fort.', cost:10},
- {id:'kinetic', name:'Fureur Cinétique', desc:'Plus vous filez vite, plus vos tirs frappent fort.', cost:11},
- {id:'seeker', name:'Missile Traqueur', desc:'Chaque tir libère un mini-missile traqueur (dégâts réduits).', cost:15},
+ {id:'turbo', name:'Turbo', desc:'Vitesse de déplacement fortement augmentée.', cost:15},
+ {id:'greed', name:'Cupidité', desc:'+50% de crédits gagnés en mission.', cost:20},
+ {id:'compact', name:'Compression', desc:'Vaisseau réduit : bien plus dur à toucher.', cost:25},
+ {id:'double', name:'Double Tir', desc:'Deux tirs parallèles au lieu d\'un.', cost:30},
+ {id:'heavy', name:'Canon Lourd', desc:'+40% dégâts, -20% cadence de tir.', cost:35},
+ {id:'regen', name:'Bouclier Réactif', desc:'Régénère un bouclier au fil du temps.', cost:40},
+ {id:'ricochet', name:'Ricochet', desc:'Vos tirs rebondissent une fois vers un ennemi proche.', cost:45},
+ {id:'density', name:'Densité Négative', desc:'Vaisseau compacté : plus il est petit, plus il frappe fort.', cost:55},
+ {id:'kinetic', name:'Fureur Cinétique', desc:'Plus vous filez vite, plus vos tirs frappent fort.', cost:65},
+ {id:'seeker', name:'Missile Traqueur', desc:'Chaque tir libère un mini-missile traqueur (dégâts réduits).', cost:90},
 ];
 function perkById(id){ return PERKS.find(p=>p.id===id); }
 const SKINS=[
@@ -563,7 +573,7 @@ function newRunCtx(mode, levelData){
 }
 
 /* ================= MOVEMENT / FIRE ================= */
-const FINGER_OFFSET=110;
+const FINGER_OFFSET=85;
 function updatePlayerMovement(dt){
   const maxSpeed=500*player.speedMul;
   let dx=0, dy=0, used=false;
@@ -882,7 +892,25 @@ function endRun(success){
   if(runCtx.mode==='infinite'){ P.hiInfinite=Math.max(P.hiInfinite, runCtx.score); }
   if(runCtx.mode==='chaos'){ P.hiChaos=Math.max(P.hiChaos, runCtx.score); }
   saveProfile();
-  showEndScreen(success, runCtx.score, total);
+  maybeShowInterstitial(()=>showEndScreen(success, runCtx.score, total));
+}
+function maybeShowInterstitial(next){
+  P.runsCompleted=(P.runsCompleted||0)+1; saveProfile();
+  if(!P.noAds && P.runsCompleted%2===0){ showInterstitial(next); }
+  else { next(); }
+}
+function showInterstitial(next){
+  showScreen('scr-interstitial');
+  let t=3;
+  const el=document.getElementById('adCountdown');
+  const btn=document.getElementById('adContinue');
+  el.textContent=t; btn.disabled=true; btn.textContent=`Continuer (${t})`;
+  const timer=setInterval(()=>{
+    t--;
+    if(t<=0){ clearInterval(timer); btn.disabled=false; btn.textContent='Continuer'; el.textContent='✓'; }
+    else { el.textContent=t; btn.textContent=`Continuer (${t})`; }
+  },1000);
+  btn.onclick=()=>{ if(btn.disabled) return; sfxClick(); clearInterval(timer); next(); };
 }
 function update(dt){
   updatePlayerMovement(dt);
@@ -1211,7 +1239,7 @@ function renderBoutique(body){
   h.textContent='Packs de Noyaux (achat intégré — aperçu de la version App Store) :';
   body.appendChild(h);
 
-  const packs=[{n:10,price:'0,99 €'},{n:60,price:'4,99 €'},{n:150,price:'9,99 €'}];
+  const packs=[{n:20,price:'0,99 €'},{n:100,price:'4,99 €'},{n:250,price:'9,99 €'}];
   packs.forEach(pack=>{
     const row=document.createElement('div'); row.className='stat-row';
     row.innerHTML=`<div class="info"><div class="name">${pack.n} <span class="dot hex" style="display:inline-block;vertical-align:middle;"></span> Noyaux</div><div class="desc">${pack.price}</div></div>`;
