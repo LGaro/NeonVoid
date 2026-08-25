@@ -223,6 +223,7 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
         <div style="display:flex; gap:6px;">
           <button class="btn ghost" id="btnStory">Histoire</button>
           <button class="btn ghost" id="btnCodex">Codex</button>
+          <button class="btn ghost" id="btnSettings" style="padding:10px 12px;">⚙</button>
         </div>
       </div>
       <button class="btn" id="btnCampaign">Campagne</button>
@@ -256,6 +257,18 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
         <div id="codexAchievements" class="menu-stack"></div>
       </div>
       <button class="btn ghost" id="backFromCodex" style="margin-top:12px;">Retour</button>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="screen" id="scr-settings">
+    <div class="panel menu-stack">
+      <h2 class="section-title">Réglages</h2>
+      <div class="stat-row">
+        <div class="info"><div class="name">Son</div><div class="desc">Musique et effets sonores.</div></div>
+        <button class="buy-btn" id="soundToggleBtn">Activé</button>
+      </div>
+      <button class="btn ghost" id="backFromSettings">Retour</button>
     </div>
   </section>
 
@@ -299,9 +312,9 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
         </div>
       </div>
       <div class="tabs">
-        <div class="tab active" data-tab="stats">Statistiques</div>
+        <div class="tab active" data-tab="stats">Vaisseau</div>
         <div class="tab" data-tab="modules">Modules</div>
-        <div class="tab" data-tab="pilotes">Vaisseaux</div>
+        <div class="tab" data-tab="pilotes">Hangar</div>
         <div class="tab" data-tab="boutique">Boutique</div>
       </div>
       <div class="scroll-area" id="atelierBody"></div>
@@ -313,6 +326,10 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
   <section class="screen" id="scr-pause">
     <div class="panel menu-stack">
       <h2 class="section-title">Pause</h2>
+      <div class="stat-row">
+        <div class="info"><div class="name">Son</div></div>
+        <button class="buy-btn" id="pauseSoundToggleBtn">Activé</button>
+      </div>
       <button class="btn" id="resumeBtn">Reprendre</button>
       <button class="btn secondary" id="quitBtn">Abandonner la mission</button>
     </div>
@@ -368,7 +385,7 @@ function defaultProfile(){
     credits:0, cores:0, unlockedLevel:0,
     upgrades:{damage:0,fireRate:0,health:0,shield:0,magnet:0},
     modules:[], equippedModules:[], ownedSkins:['default'], equippedSkin:'default',
-    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0, ngPlusCycle:0, maxLevelEverReached:0,
+    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0, ngPlusCycle:0, maxLevelEverReached:0, soundOn:true,
     sectorsSeen:[false,false,false,false,false,false],
     stats:{totalKills:0, totalBossKills:0, flawlessClears:0, bestInfiniteSeconds:0},
     achievements:{},
@@ -397,6 +414,7 @@ function ensureAudio(){
   return actx;
 }
 function tone(freq,dur,type,vol,delay){
+  if(!P.soundOn) return;
   const ctx=ensureAudio(); if(!ctx) return;
   const t0=ctx.currentTime+(delay||0);
   const osc=ctx.createOscillator(); osc.type=type||'square'; osc.frequency.setValueAtTime(freq,t0);
@@ -411,6 +429,7 @@ function sfxClick(){ ensureAudio(); tone(560,0.04,'square',0.045); }
 function sfxHurt(){ tone(150,0.16,'sawtooth',0.07); }
 function sfxPowerup(){ tone(440,0.09,'triangle',0.06); tone(660,0.09,'triangle',0.06,0.08); tone(880,0.12,'triangle',0.06,0.16); }
 function sfxExplosion(){
+  if(!P.soundOn) return;
   const ctx=ensureAudio(); if(!ctx) return;
   const t0=ctx.currentTime;
   const bufSize=Math.floor(ctx.sampleRate*0.3);
@@ -425,6 +444,7 @@ function sfxExplosion(){
 const ARP_SCALE=[293.66,349.23,392.0,440.0,349.23,293.66,261.63,349.23];
 let arpIdx=0;
 function startMusic(){
+  if(!P.soundOn) return;
   const ctx=ensureAudio(); if(!ctx||musicPlaying) return;
   musicPlaying=true;
   musicGain=ctx.createGain(); musicGain.gain.value=0.0001; musicGain.connect(ctx.destination);
@@ -462,7 +482,7 @@ const STAT_DEFS={
   magnet:{label:"Portée d'aimant", base:60, perLevel:10, cost:35},
 };
 const MAX_UPGRADE_LEVEL=10;
-function upgradeCost(stat){ const lvl=P.upgrades[stat]||0; if(lvl>=MAX_UPGRADE_LEVEL) return -1; return Math.round(STAT_DEFS[stat].cost*(lvl+1)); }
+function upgradeCost(stat){ const lvl=P.upgrades[stat]||0; if(lvl>=MAX_UPGRADE_LEVEL) return -1; return Math.round(STAT_DEFS[stat].cost*Math.pow(lvl+1,1.35)); }
 function computeBaseStats(){
   const u=P.upgrades;
   return {
@@ -475,7 +495,7 @@ function computeBaseStats(){
 }
 const MAX_EQUIPPED_MODULES=2;
 const PERKS=[
- {id:'turbo', name:'Turbo', desc:'Vitesse de déplacement fortement augmentée.', cost:15},
+ {id:'nanorepair', name:'Nano-Réparation', desc:'Régénère lentement la coque au fil du temps.', cost:15},
  {id:'greed', name:'Cupidité', desc:'+50% de crédits gagnés en mission.', cost:20},
  {id:'compact', name:'Compression', desc:'Vaisseau réduit : bien plus dur à toucher.', cost:25},
  {id:'double', name:'Double Tir', desc:'Deux tirs parallèles au lieu d\'un.', cost:30},
@@ -564,7 +584,7 @@ const ENEMY_LORE={
   boss:{name:"Sentinelle de l'Éclipse", desc:"Le cœur de chaque essaim régional. Rien ne l'égale en dangerosité, sauf peut-être la suivante."},
 };
 const CREW_LORE=[
-  {name:'Kae Solari', role:'Pilote', desc:"Ex-contrebandière, dettes de jeu, sens de l'à-propos discutable. Pilote l'Aurora-9 depuis que Kess, son système natal, s'est retrouvé sur la route de l'Éclipse."},
+  {name:'Kae Solari', role:'Pilote', desc:"Ex-contrebandière criblée de dettes de jeu, avec un humour qui met tout le monde mal à l'aise sauf elle. Pilote l'Aurora-9 depuis que Kess, son système natal, s'est retrouvé sur la route de l'Éclipse."},
   {name:'VESTA', role:"IA de bord", desc:"Sarcastique, précise au dixième de pourcent près, et débitrice envers Kae d'une dette de jeu qu'elle nie obstinément."},
   {name:'Miso', role:'Passager clandestin', desc:"Chat increvable planqué dans la soute depuis le premier jour. Personne ne sait comment il est monté à bord. Personne n'ose le débarquer."},
 ];
@@ -632,7 +652,6 @@ function applyPerkSideEffects(){
   player.sizeMul=1; player.speedMul=1;
   if(player.perks.includes('compact')) player.sizeMul*=0.62;
   if(player.perks.includes('density')) player.sizeMul*=0.8;
-  if(player.perks.includes('turbo')) player.speedMul*=1.35;
   if(player.perks.includes('heavy')){ s.damage*=1.4; s.fireRate*=0.8; }
   player.stats=s; player.r=player.baseR*player.sizeMul;
 }
@@ -648,6 +667,7 @@ function newRunCtx(mode, levelData){
 
 /* ================= MOVEMENT / FIRE ================= */
 const FINGER_OFFSET=85;
+const FIRE_MARGIN=28;
 function updatePlayerMovement(dt){
   const maxSpeed=500*player.speedMul;
   let dx=0, dy=0, used=false;
@@ -669,7 +689,7 @@ function updatePlayerMovement(dt){
 }
 function computeDamageMultiplier(){
   let m=1;
-  if(player.perks.includes('kinetic')){ const frac=Math.max(0,Math.min(1, player.speed/(500*player.speedMul))); m*=1+frac*0.9; }
+  if(player.perks.includes('kinetic')){ const frac=Math.max(0,Math.min(1, player.speed/900)); m*=1+frac*0.9; }
   if(player.perks.includes('density')){ m*=1+(1-player.sizeMul)*1.3; }
   return m;
 }
@@ -690,7 +710,7 @@ function spawnEnemyBullet(x,y,vx,vy,dmg){ ebullets.push({x,y,vx,vy,r:6,dmg}); }
 /* ================= ENEMIES / BOSS ================= */
 function spawnEnemy(type,difficulty){
   const def=ENEMY_DEFS[type]||ENEMY_DEFS.drone; const r=def.r;
-  enemies.push({ type, x:Math.random()*(VW-2*r)+r, y:-r-10, hp:def.hp*difficulty, maxHp:def.hp*difficulty,
+  enemies.push({ type, x:Math.random()*(VW-2*FIRE_MARGIN)+FIRE_MARGIN, y:-r-10, hp:def.hp*difficulty, maxHp:def.hp*difficulty,
     speed:def.speed*(1+(difficulty-1)*0.35), r, dmg:def.dmg, credit:def.credit, color:def.color, t:Math.random()*10,
     shoots:!!def.shoots, missileChance:def.missileChance||0, fireCd:1+Math.random()*1.4, zigzag:!!def.zigzag,
     dash:!!def.dash, dashCd:1+Math.random(), dashing:false, dashTimer:0, dashDirX:0 });
@@ -702,7 +722,6 @@ function updateEnemy(e,dt){
   if(e.dash){
     if(e.dashing){
       e.x += e.dashDirX*560*dt;
-      e.x = Math.max(e.r, Math.min(VW-e.r, e.x));
       e.dashTimer -= dt;
       if(e.dashTimer<=0){ e.dashing=false; e.dashCd=1.6; }
     } else {
@@ -710,6 +729,7 @@ function updateEnemy(e,dt){
       if(e.dashCd<=0){ e.dashing=true; e.dashTimer=0.3; e.dashDirX=(player.x>=e.x)?1:-1; }
     }
   }
+  e.x = Math.max(FIRE_MARGIN, Math.min(VW-FIRE_MARGIN, e.x));
   e.y+=e.speed*dt;
   if(e.shoots){
     e.fireCd-=dt;
@@ -851,20 +871,25 @@ function drawPlayer(){
   CTX.beginPath(); CTX.ellipse(0,-player.baseR*0.15,player.baseR*0.28,player.baseR*0.42,0,0,Math.PI*2); CTX.fillStyle='#eafcff'; CTX.shadowBlur=10; CTX.fill();
   CTX.restore(); CTX.globalAlpha=1;
 }
+function traceEnemyShape(ctx,type,r){
+  ctx.beginPath();
+  if(type==='gunship'||type==='cruiser'){
+    ctx.moveTo(0,-r); ctx.lineTo(r*0.9,-r*0.1); ctx.lineTo(r*0.6,r*0.9); ctx.lineTo(0,r*0.5); ctx.lineTo(-r*0.6,r*0.9); ctx.lineTo(-r*0.9,-r*0.1);
+  } else if(type==='corvette'){
+    ctx.moveTo(0,-r); ctx.lineTo(r*0.7,r*0.7); ctx.lineTo(0,r*0.25); ctx.lineTo(-r*0.7,r*0.7);
+  } else if(type==='interceptor'){
+    ctx.moveTo(0,-r*1.15); ctx.lineTo(r*0.4,r*0.2); ctx.lineTo(r*0.9,r*0.85); ctx.lineTo(0,r*0.35); ctx.lineTo(-r*0.9,r*0.85); ctx.lineTo(-r*0.4,r*0.2);
+  } else {
+    ctx.moveTo(0,-r); ctx.lineTo(r*0.75,r*0.75); ctx.lineTo(-r*0.75,r*0.75);
+  }
+  ctx.closePath();
+}
 function drawEnemy(e){
   CTX.save(); CTX.translate(e.x,e.y); CTX.rotate(Math.PI); CTX.shadowColor=e.color; CTX.shadowBlur=13;
   const grad=CTX.createLinearGradient(0,-e.r,0,e.r); grad.addColorStop(0,'#170812'); grad.addColorStop(0.5,e.color); grad.addColorStop(1,'#170812');
-  CTX.fillStyle=grad; CTX.beginPath();
-  if(e.type==='gunship'||e.type==='cruiser'){
-    CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.9,-e.r*0.1); CTX.lineTo(e.r*0.6,e.r*0.9); CTX.lineTo(0,e.r*0.5); CTX.lineTo(-e.r*0.6,e.r*0.9); CTX.lineTo(-e.r*0.9,-e.r*0.1);
-  } else if(e.type==='corvette'){
-    CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.7,e.r*0.7); CTX.lineTo(0,e.r*0.25); CTX.lineTo(-e.r*0.7,e.r*0.7);
-  } else if(e.type==='interceptor'){
-    CTX.moveTo(0,-e.r*1.15); CTX.lineTo(e.r*0.4,e.r*0.2); CTX.lineTo(e.r*0.9,e.r*0.85); CTX.lineTo(0,e.r*0.35); CTX.lineTo(-e.r*0.9,e.r*0.85); CTX.lineTo(-e.r*0.4,e.r*0.2);
-  } else {
-    CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.75,e.r*0.75); CTX.lineTo(-e.r*0.75,e.r*0.75);
-  }
-  CTX.closePath(); CTX.fill();
+  CTX.fillStyle=grad;
+  traceEnemyShape(CTX,e.type,e.r);
+  CTX.fill();
   CTX.beginPath(); CTX.arc(0,-e.r*0.1,e.r*0.22,0,Math.PI*2); CTX.fillStyle='#fff'; CTX.shadowBlur=8; CTX.fill();
   CTX.restore();
   {
@@ -1006,6 +1031,9 @@ function update(dt){
     if(player.maxShield<=0) player.maxShield=24;
     player.shield=Math.min(player.maxShield, player.shield+player.maxShield*0.35*dt);
   }
+  if(player.perks.includes('nanorepair') && player.hp<player.maxHp){
+    player.hp=Math.min(player.maxHp, player.hp+player.maxHp*0.015*dt);
+  }
   tryFire(dt);
   for(let i=bullets.length-1;i>=0;i--){
     const b=bullets[i]; b.y+=b.vy*dt; b.x+=b.vx*dt;
@@ -1120,6 +1148,52 @@ onClick(document.getElementById('storyContinue'), ()=>{
   else { showScreen('scr-menu'); refreshMenuCredits(); }
 });
 
+function drawIconShape(ctx,type,r,color){
+  if(type==='boss'){
+    const grad=ctx.createLinearGradient(-r,0,r,0); grad.addColorStop(0,'#3a0a18'); grad.addColorStop(0.5,'#ff4d5e'); grad.addColorStop(1,'#3a0a18');
+    ctx.fillStyle=grad; ctx.shadowColor='#ff4d5e'; ctx.shadowBlur=10;
+    ctx.beginPath();
+    ctx.moveTo(-r,-r*0.12); ctx.lineTo(-r*0.4,-r*0.72); ctx.lineTo(0,-r*0.36); ctx.lineTo(r*0.4,-r*0.72); ctx.lineTo(r,-r*0.12);
+    ctx.lineTo(r*0.6,r*0.6); ctx.lineTo(0,r*0.3); ctx.lineTo(-r*0.6,r*0.6);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-r*0.12,r*0.26,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.shadowBlur=8; ctx.fill();
+  } else {
+    const grad=ctx.createLinearGradient(0,-r,0,r); grad.addColorStop(0,'#170812'); grad.addColorStop(0.5,color); grad.addColorStop(1,'#170812');
+    ctx.fillStyle=grad; ctx.shadowColor=color; ctx.shadowBlur=10;
+    traceEnemyShape(ctx,type,r);
+    ctx.fill();
+    ctx.beginPath(); ctx.arc(0,-r*0.1,r*0.22,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.shadowBlur=6; ctx.fill();
+  }
+}
+function paintEnemyIcon(canvas,type,color){
+  const size=48, dpr=Math.min(window.devicePixelRatio||1,2);
+  canvas.width=size*dpr; canvas.height=size*dpr; canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.save();
+  ctx.translate(size/2, size/2+5);
+  drawIconShape(ctx,type,16,color);
+  ctx.restore();
+}
+function buildEnemyCard(type,lore,unlocked){
+  const card=document.createElement('div'); card.className='stat-row'; card.style.alignItems='flex-start';
+  const iconWrap=document.createElement('div');
+  iconWrap.style.cssText='flex:0 0 48px; width:48px; height:48px; display:flex; align-items:center; justify-content:center;';
+  if(unlocked){
+    const canvas=document.createElement('canvas');
+    paintEnemyIcon(canvas, type, (ENEMY_DEFS[type]&&ENEMY_DEFS[type].color)||'#ff4d5e');
+    iconWrap.appendChild(canvas);
+  } else {
+    iconWrap.style.cssText+='font-size:20px; opacity:.5;'; iconWrap.textContent='🔒';
+  }
+  card.appendChild(iconWrap);
+  const info=document.createElement('div'); info.className='info';
+  info.innerHTML = unlocked
+    ? `<div class="name">${lore.name}</div><div class="desc" style="margin-top:4px; line-height:1.4;">${lore.desc}</div>`
+    : `<div class="name">???</div><div class="desc" style="margin-top:4px; line-height:1.4;">Signature non répertoriée. Progresse dans la campagne pour l'identifier.</div>`;
+  card.appendChild(info);
+  return card;
+}
 function buildLoreCard(title, sub, desc){
   const card=document.createElement('div'); card.className='stat-row'; card.style.alignItems='flex-start';
   card.innerHTML=`<div class="info"><div class="name">${title}${sub?` <span style="color:var(--ghost-dim); font-weight:500; font-size:11px;">· ${sub}</span>`:''}</div><div class="desc" style="margin-top:4px; line-height:1.4;">${desc}</div></div>`;
@@ -1137,9 +1211,7 @@ function openCodex(){
   if(reached>=12) unlockedTypes.push('cruiser');
   if(reached>=5) unlockedTypes.push('boss');
   for(const type of ['drone','corvette','gunship','interceptor','cruiser','boss']){
-    const lore=ENEMY_LORE[type];
-    if(unlockedTypes.includes(type)){ enemiesWrap.appendChild(buildLoreCard(lore.name, null, lore.desc)); }
-    else { enemiesWrap.appendChild(buildLoreCard('??? ', null, "Signature non répertoriée. Progresse dans la campagne pour l'identifier.")); }
+    enemiesWrap.appendChild(buildEnemyCard(type, ENEMY_LORE[type], unlockedTypes.includes(type)));
   }
   const achWrap=document.getElementById('codexAchievements'); achWrap.innerHTML='';
   const unlockedCount=ACHIEVEMENTS.filter(a=>P.achievements[a.id]).length;
@@ -1160,6 +1232,20 @@ function openCodex(){
 }
 onClick(document.getElementById('btnCodex'), openCodex);
 onClick(document.getElementById('backFromCodex'), ()=>showScreen('scr-menu'));
+
+function updateSoundButtons(){
+  const label=P.soundOn?'Activé':'Coupé';
+  document.getElementById('soundToggleBtn').textContent=label;
+  document.getElementById('pauseSoundToggleBtn').textContent=label;
+}
+function toggleSound(){
+  P.soundOn=!P.soundOn; saveProfile(); updateSoundButtons();
+  if(!P.soundOn){ stopMusic(); } else if(state.running){ startMusic(); }
+}
+onClick(document.getElementById('soundToggleBtn'), toggleSound);
+onClick(document.getElementById('pauseSoundToggleBtn'), toggleSound);
+onClick(document.getElementById('btnSettings'), ()=>{ updateSoundButtons(); showScreen('scr-settings'); });
+onClick(document.getElementById('backFromSettings'), ()=>showScreen('scr-menu'));
 
 function openLevelSelect(){
   const cycle=P.ngPlusCycle||0;
@@ -1285,7 +1371,7 @@ function quitToMenu(){
   document.getElementById('bossWrap').classList.remove('show');
   refreshMenuCredits(); showScreen('scr-menu');
 }
-onClick(document.getElementById('pauseBtn'), ()=>{ if(state.running){ state.paused=true; showScreen('scr-pause'); } });
+onClick(document.getElementById('pauseBtn'), ()=>{ if(state.running){ state.paused=true; updateSoundButtons(); showScreen('scr-pause'); } });
 onClick(document.getElementById('resumeBtn'), ()=>{ state.paused=false; hideOverlay(); });
 onClick(document.getElementById('quitBtn'), quitToMenu);
 onClick(document.getElementById('backFromLevels'), ()=>showScreen('scr-menu'));
@@ -1299,7 +1385,7 @@ onClick(document.getElementById('btnStory'), ()=>openStory(-1));
 /* ================= CHAOS PERK PICK ================= */
 function offerPerkChoice(){
   state.paused=true;
-  const pool = P.modules.length ? P.modules.slice() : ['double','turbo','greed'];
+  const pool = P.modules.length ? P.modules.slice() : ['double','nanorepair','greed'];
   const available=pool.filter(id=>!player.perks.includes(id));
   const options=(available.length?available:pool).sort(()=>Math.random()-0.5).slice(0,3);
   const grid=document.getElementById('perkPickGrid'); grid.innerHTML='';
@@ -1484,7 +1570,7 @@ function loop(t){
 }
 
 function boot(){
-  resize(); initBackground(); refreshMenuCredits();
+  resize(); initBackground(); refreshMenuCredits(); updateSoundButtons();
   if(!P.storySeen){ P.storySeen=true; saveProfile(); openStory(-1); }
   requestAnimationFrame(loop);
 }
