@@ -161,6 +161,7 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
 .perk-pick-card:active{transform:scale(.97);}
 
 .mode-card{display:flex; flex-direction:column; gap:4px; padding:14px; cursor:pointer; border:1px solid var(--panel-edge); background:rgba(255,255,255,.02);}
+.mode-card.locked{opacity:.55; cursor:default;}
 .mode-card .name{font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--cyan);}
 .mode-card.chaos .name{color:var(--magenta);}
 .mode-card .desc{font-size:12px; color:var(--ghost-dim);}
@@ -246,10 +247,12 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
       <div class="mode-card" id="cardInfinite">
         <div class="name">VAGUE INFINIE</div>
         <div class="desc">Survis le plus longtemps possible. Difficulté progressive, sans fin. Record : <span id="scoreInfinite">0</span>.</div>
+        <div class="desc" id="infiniteLockHint" style="color:var(--danger); display:none;">🔒 Débloqué en battant la Sentinelle du Secteur 1.</div>
       </div>
       <div class="mode-card chaos" id="cardChaos">
         <div class="name">SURCHARGE NEURALE</div>
         <div class="desc">Variante infinie déchaînée : boss fréquents, et tous les 400 points VESTA te propose un module aléatoire parmi ceux débloqués à l'Atelier. Record : <span id="scoreChaos">0</span>.</div>
+        <div class="desc" id="chaosLockHint" style="color:var(--danger); display:none;">🔒 Débloqué en battant la Sentinelle du Secteur 2.</div>
       </div>
       <button class="btn ghost" id="backFromModes">Retour</button>
     </div>
@@ -296,16 +299,6 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
     </div>
   </section>
 
-  <!-- INTERSTITIAL AD (simulé) -->
-  <section class="screen" id="scr-interstitial">
-    <div class="panel menu-stack" style="text-align:center; align-items:center;">
-      <h2 class="section-title">Publicité</h2>
-      <p class="lede small">Emplacement publicitaire (aperçu) — une vraie régie s'intègre ici dans la version App Store. Achète "Retirer les publicités" en Boutique pour les désactiver.</p>
-      <div id="adCountdown" style="font-family:var(--font-display); font-weight:800; font-size:44px; color:var(--gold); text-shadow:0 0 14px rgba(255,207,77,.5);">3</div>
-      <button class="btn" id="adContinue" style="width:100%;" disabled>Continuer (3)</button>
-    </div>
-  </section>
-
   <!-- END OF RUN -->
   <section class="screen" id="scr-end">
     <div class="panel menu-stack">
@@ -317,6 +310,11 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
       <div class="topbar">
         <div class="small">Crédits gagnés</div><div class="credits-chip" id="endCredits"></div>
       </div>
+      <div class="topbar" id="endCoresRow">
+        <div class="small">Noyaux gagnés</div><div class="credits-chip cores"><span class="dot hex"></span><span id="endCoresValue">0</span></div>
+      </div>
+      <p class="small" id="endCoresHint" style="margin-top:-6px;">Noyaux : butin rare des Sentinelles (boss). Sers-t'en à l'Atelier &gt; Modules.</p>
+      <button class="btn gold" id="endDoubleAd">🎬 Regarder une pub pour doubler ces crédits</button>
       <div class="btn-row" style="margin-top:8px;">
         <button class="btn" id="endRetry">Réessayer</button>
         <button class="btn secondary" id="endMenu">Menu</button>
@@ -351,7 +349,7 @@ function defaultProfile(){
     credits:0, cores:0, unlockedLevel:0,
     upgrades:{damage:0,fireRate:0,health:0,shield:0,magnet:0},
     modules:[], equippedModules:[], ownedSkins:['default'], equippedSkin:'default',
-    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0, runsCompleted:0, noAds:false,
+    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0,
     sectorsSeen:[false,false,false,false,false,false],
   };
 }
@@ -782,7 +780,7 @@ function drawEnemy(e){
   CTX.closePath(); CTX.fill();
   CTX.beginPath(); CTX.arc(0,-e.r*0.1,e.r*0.22,0,Math.PI*2); CTX.fillStyle='#fff'; CTX.shadowBlur=8; CTX.fill();
   CTX.restore();
-  if(e.maxHp>25){
+  {
     const w=e.r*1.7;
     CTX.fillStyle='rgba(0,0,0,0.5)'; CTX.fillRect(e.x-w/2,e.y-e.r-11,w,4);
     CTX.fillStyle='#ff4d5e'; CTX.fillRect(e.x-w/2,e.y-e.r-11,w*Math.max(0,e.hp/e.maxHp),4);
@@ -885,32 +883,17 @@ function onPlayerDeath(){ endRun(false); }
 function endRun(success){
   state.running=false; stopMusic();
   let bonus = runCtx.mode==='campaign' ? (success?Math.round(runCtx.score*0.32+25):Math.round(runCtx.score*0.12)) : Math.round(runCtx.score*0.16);
-  P.cores += runCtx.coresEarned||0;
+  const coresGained = runCtx.coresEarned||0;
+  P.cores += coresGained;
   const total=runCtx.creditsEarned+bonus;
   P.credits+=total;
-  if(runCtx.mode==='campaign' && success){ P.unlockedLevel=Math.max(P.unlockedLevel, runCtx.level.index+1); }
+  if(runCtx.mode==='campaign' && success){
+    P.unlockedLevel=Math.max(P.unlockedLevel, runCtx.level.index+1);
+  }
   if(runCtx.mode==='infinite'){ P.hiInfinite=Math.max(P.hiInfinite, runCtx.score); }
   if(runCtx.mode==='chaos'){ P.hiChaos=Math.max(P.hiChaos, runCtx.score); }
   saveProfile();
-  maybeShowInterstitial(()=>showEndScreen(success, runCtx.score, total));
-}
-function maybeShowInterstitial(next){
-  P.runsCompleted=(P.runsCompleted||0)+1; saveProfile();
-  if(!P.noAds && P.runsCompleted%2===0){ showInterstitial(next); }
-  else { next(); }
-}
-function showInterstitial(next){
-  showScreen('scr-interstitial');
-  let t=3;
-  const el=document.getElementById('adCountdown');
-  const btn=document.getElementById('adContinue');
-  el.textContent=t; btn.disabled=true; btn.textContent=`Continuer (${t})`;
-  const timer=setInterval(()=>{
-    t--;
-    if(t<=0){ clearInterval(timer); btn.disabled=false; btn.textContent='Continuer'; el.textContent='✓'; }
-    else { el.textContent=t; btn.textContent=`Continuer (${t})`; }
-  },1000);
-  btn.onclick=()=>{ if(btn.disabled) return; sfxClick(); clearInterval(timer); next(); };
+  showEndScreen(success, runCtx.score, total, coresGained);
 }
 function update(dt){
   updatePlayerMovement(dt);
@@ -1065,13 +1048,20 @@ function launchLevel(idx){
   elMissionLabel.textContent=lv.name;
   beginRun();
 }
+function isInfiniteUnlocked(){ return P.unlockedLevel>=5; }
+function isChaosUnlocked(){ return P.unlockedLevel>=10; }
 function openModes(){
   document.getElementById('scoreInfinite').textContent=P.hiInfinite;
   document.getElementById('scoreChaos').textContent=P.hiChaos;
+  const infUnlocked=isInfiniteUnlocked(), chaosUnlocked=isChaosUnlocked();
+  document.getElementById('cardInfinite').classList.toggle('locked', !infUnlocked);
+  document.getElementById('cardChaos').classList.toggle('locked', !chaosUnlocked);
+  document.getElementById('infiniteLockHint').style.display = infUnlocked ? 'none' : 'block';
+  document.getElementById('chaosLockHint').style.display = chaosUnlocked ? 'none' : 'block';
   showScreen('scr-modes');
 }
-onClick(document.getElementById('cardInfinite'), ()=>{ runCtx=newRunCtx('infinite'); elMissionLabel.textContent='Vague Infinie'; beginRun(); });
-onClick(document.getElementById('cardChaos'), ()=>{ runCtx=newRunCtx('chaos'); elMissionLabel.textContent='Surcharge Neurale'; beginRun(); });
+onClick(document.getElementById('cardInfinite'), ()=>{ if(!isInfiniteUnlocked()) return; runCtx=newRunCtx('infinite'); elMissionLabel.textContent='Vague Infinie'; beginRun(); });
+onClick(document.getElementById('cardChaos'), ()=>{ if(!isChaosUnlocked()) return; runCtx=newRunCtx('chaos'); elMissionLabel.textContent='Surcharge Neurale'; beginRun(); });
 
 function beginRun(){
   player=makePlayer();
@@ -1090,19 +1080,34 @@ function beginRun(){
 }
 
 let endWasSuccess=false;
-function showEndScreen(success,score,credits){
+let endBaseCredits=0, endAdUsed=false;
+function showEndScreen(success,score,credits,cores){
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('bossWrap').classList.remove('show');
   endWasSuccess=success;
+  endBaseCredits=credits; endAdUsed=false;
   document.getElementById('endTitle').textContent = success?'Mission accomplie':'Vaisseau perdu';
   document.getElementById('endText').textContent = success
     ? 'VESTA : "Coque intacte, ou presque. On continue."'
     : 'VESTA : "Signal perdu... récupération en cours. On retente ?"';
   document.getElementById('endScore').textContent=score;
   document.getElementById('endCredits').innerHTML=`<span class="dot"></span>+${credits}`;
+  document.getElementById('endCoresValue').textContent=`+${cores||0}`;
+  document.getElementById('endCoresRow').style.display = (cores>0) ? 'flex' : 'none';
+  document.getElementById('endCoresHint').style.display = (cores>0) ? 'block' : 'none';
+  const adBtn=document.getElementById('endDoubleAd');
+  adBtn.style.display='block'; adBtn.disabled=false; adBtn.textContent='🎬 Regarder une pub pour doubler ces crédits';
   document.getElementById('endRetry').textContent=(runCtx.mode==='campaign'&&success)?'Mission suivante':'Réessayer';
   showScreen('scr-end');
 }
+onClick(document.getElementById('endDoubleAd'), ()=>{
+  if(endAdUsed) return;
+  endAdUsed=true;
+  P.credits+=endBaseCredits; saveProfile();
+  document.getElementById('endCredits').innerHTML=`<span class="dot"></span>+${endBaseCredits*2}`;
+  const adBtn=document.getElementById('endDoubleAd');
+  adBtn.disabled=true; adBtn.textContent='✓ Crédits doublés';
+});
 onClick(document.getElementById('endRetry'), ()=>{
   if(runCtx.mode==='campaign'){ let idx=runCtx.level.index; if(endWasSuccess) idx=Math.min(idx+1,TOTAL_LEVELS-1); tryLaunchLevel(idx); }
   else if(runCtx.mode==='infinite'){ runCtx=newRunCtx('infinite'); elMissionLabel.textContent='Vague Infinie'; beginRun(); }
@@ -1224,6 +1229,9 @@ function renderAtelier(){
 
 const AD_COOLDOWN=60;
 function renderBoutique(body){
+  const coreNote=document.createElement('p'); coreNote.className='small'; coreNote.style.marginBottom='10px';
+  coreNote.innerHTML=`Les <span class="dot hex"></span> Noyaux s'obtiennent aussi gratuitement en jeu : chaque Sentinelle (boss) vaincue en rapporte quelques-uns (plus il y en a, plus le secteur est avancé). Les packs ci-dessous ne sont qu'un raccourci.`;
+  body.appendChild(coreNote);
   const adRow=document.createElement('div'); adRow.className='stat-row';
   const secsLeft=Math.max(0, AD_COOLDOWN-Math.floor((Date.now()-(P.lastAdWatch||0))/1000));
   adRow.innerHTML=`<div class="info"><div class="name">Regarder une pub</div><div class="desc">Bonus immédiat de crédits. Rechargement ${AD_COOLDOWN}s.</div></div>`;
