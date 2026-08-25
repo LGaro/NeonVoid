@@ -262,13 +262,41 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
 
   <!-- SETTINGS -->
   <section class="screen" id="scr-settings">
-    <div class="panel menu-stack">
+    <div class="panel">
       <h2 class="section-title">Réglages</h2>
-      <div class="stat-row">
-        <div class="info"><div class="name">Son</div><div class="desc">Musique et effets sonores.</div></div>
-        <button class="buy-btn" id="soundToggleBtn">Activé</button>
+      <div class="scroll-area" style="max-height:64vh;">
+        <div class="stat-row">
+          <div class="info"><div class="name">Son</div><div class="desc">Musique et effets sonores.</div></div>
+          <button class="buy-btn" id="soundToggleBtn">Activé</button>
+        </div>
+
+        <p class="small" style="margin:14px 0 4px;">COMPTE &amp; ACHATS</p>
+        <div class="stat-row">
+          <div class="info"><div class="name">Restaurer les achats</div></div>
+          <button class="buy-btn" id="restorePurchasesBtn">Restaurer</button>
+        </div>
+        <div class="stat-row">
+          <div class="info"><div class="name">Réinitialiser la progression</div><div class="desc">Efface crédits, Noyaux, améliorations et succès sur cet appareil.</div></div>
+          <button class="buy-btn" id="resetProgressBtn" style="background:var(--danger); color:#fff;">Effacer</button>
+        </div>
+
+        <p class="small" style="margin:14px 0 4px;">LÉGAL</p>
+        <div class="stat-row" style="flex-direction:column; align-items:stretch; cursor:pointer;" id="privacyRow">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="name">Politique de confidentialité</div><div class="desc" id="privacyChevron">▾</div>
+          </div>
+          <div class="desc" id="privacyText" style="display:none; margin-top:8px; line-height:1.5;"></div>
+        </div>
+        <div class="stat-row" style="flex-direction:column; align-items:stretch; cursor:pointer;" id="termsRow">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="name">Conditions d'utilisation</div><div class="desc" id="termsChevron">▾</div>
+          </div>
+          <div class="desc" id="termsText" style="display:none; margin-top:8px; line-height:1.5;"></div>
+        </div>
+
+        <p class="small" style="margin:16px 0 0; text-align:center;">Neon Void — v1.0.0 (aperçu web)</p>
       </div>
-      <button class="btn ghost" id="backFromSettings">Retour</button>
+      <button class="btn ghost" id="backFromSettings" style="margin-top:12px;">Retour</button>
     </div>
   </section>
 
@@ -312,9 +340,9 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
         </div>
       </div>
       <div class="tabs">
-        <div class="tab active" data-tab="stats">Vaisseau</div>
+        <div class="tab active" data-tab="stats">Systèmes</div>
         <div class="tab" data-tab="modules">Modules</div>
-        <div class="tab" data-tab="pilotes">Hangar</div>
+        <div class="tab" data-tab="pilotes">Vaisseaux</div>
         <div class="tab" data-tab="boutique">Boutique</div>
       </div>
       <div class="scroll-area" id="atelierBody"></div>
@@ -507,6 +535,7 @@ const PERKS=[
  {id:'seeker', name:'Missile Traqueur', desc:'Chaque tir libère un mini-missile traqueur (dégâts réduits).', cost:90},
  {id:'armor', name:'Blindage Adaptatif', desc:'-20% de dégâts subis, toutes sources.', cost:70},
  {id:'secondwind', name:'Second Souffle', desc:'Une fois par run, survis à un coup fatal avec 30% de coque.', cost:100},
+ {id:'homingsalvo', name:'Salve Traqueuse', desc:'Tous les 4 tirs, un missile traqueur à pleine puissance part avec.', earnedVia:"Récompense du succès « Chasseur de Sentinelles »"},
 ];
 function perkById(id){ return PERKS.find(p=>p.id===id); }
 const SKINS=[
@@ -593,7 +622,7 @@ const ACHIEVEMENTS=[
   {id:'first_blood', name:'Premier Sang', desc:'Élimine ton premier ennemi.', reward:{credits:10}, check:P=>P.stats.totalKills>=1, progress:P=>[P.stats.totalKills,1]},
   {id:'squad_wipe', name:'Escouade Décimée', desc:'Élimine 100 ennemis au total.', reward:{credits:50}, check:P=>P.stats.totalKills>=100, progress:P=>[P.stats.totalKills,100]},
   {id:'sky_scourge', name:'Fléau du Ciel', desc:'Élimine 500 ennemis au total.', reward:{cores:3}, check:P=>P.stats.totalKills>=500, progress:P=>[P.stats.totalKills,500]},
-  {id:'sentinel_hunter', name:'Chasseur de Sentinelles', desc:'Vaincs ton premier boss.', reward:{credits:30}, check:P=>P.stats.totalBossKills>=1, progress:P=>[P.stats.totalBossKills,1]},
+  {id:'sentinel_hunter', name:'Chasseur de Sentinelles', desc:'Vaincs ton premier boss.', reward:{credits:30}, unlockModule:'homingsalvo', check:P=>P.stats.totalBossKills>=1, progress:P=>[P.stats.totalBossKills,1]},
   {id:'eclipse_executioner', name:"Bourreau de l'Éclipse", desc:'Vaincs 10 boss au total.', reward:{cores:5}, check:P=>P.stats.totalBossKills>=10, progress:P=>[P.stats.totalBossKills,10]},
   {id:'flawless', name:'Sans Égratignure', desc:'Termine une mission de campagne sans perdre un point de vie.', reward:{cores:4}, check:P=>P.stats.flawlessClears>=1, progress:P=>[P.stats.flawlessClears,1]},
   {id:'survivor', name:'Survivant', desc:'Atteins 5 minutes en une seule run de Vague Infinie.', reward:{credits:40}, check:P=>P.stats.bestInfiniteSeconds>=300, progress:P=>[Math.floor(P.stats.bestInfiniteSeconds),300]},
@@ -609,6 +638,7 @@ function evaluateAchievements(){
       P.achievements[a.id]=true;
       if(a.reward.credits) P.credits+=a.reward.credits;
       if(a.reward.cores) P.cores+=a.reward.cores;
+      if(a.unlockModule && !P.modules.includes(a.unlockModule)) P.modules.push(a.unlockModule);
       unlocked.push(a);
     }
   }
@@ -617,7 +647,8 @@ function evaluateAchievements(){
     unlocked.forEach((a,i)=>{
       setTimeout(()=>{
         const rewardTxt=a.reward.credits?`+${a.reward.credits} cr.`:`+${a.reward.cores} Noyaux`;
-        showToast(`🏆 Succès débloqué : ${a.name} (${rewardTxt})`);
+        const moduleTxt=a.unlockModule ? ` + module « ${perkById(a.unlockModule).name} »` : '';
+        showToast(`🏆 Succès débloqué : ${a.name} (${rewardTxt}${moduleTxt})`);
       }, i*2700);
     });
   }
@@ -703,6 +734,10 @@ function tryFire(dt){
     spawnPlayerBullet(player.x+11,player.y-player.r,dmg*0.75);
   } else { spawnPlayerBullet(player.x,player.y-player.r,dmg); }
   if(player.perks.includes('seeker')){ missiles.push({x:player.x,y:player.y-player.r,vx:0,vy:-520,r:7,dmg:dmg*0.3,friend:true,turn:3.4,speed:520,target:null}); }
+  if(player.perks.includes('homingsalvo')){
+    player.shotCount=(player.shotCount||0)+1;
+    if(player.shotCount%4===0){ missiles.push({x:player.x,y:player.y-player.r,vx:0,vy:-520,r:8,dmg,friend:true,turn:4.0,speed:540,target:null}); }
+  }
 }
 function spawnPlayerBullet(x,y,dmg){ bullets.push({x,y,vx:0,vy:-880,r:5,dmg,bounced:false}); }
 function spawnEnemyBullet(x,y,vx,vy,dmg){ ebullets.push({x,y,vx,vy,r:6,dmg}); }
@@ -823,6 +858,19 @@ function spawnExplosion(x,y,scale,soft){
 }
 
 /* ================= BACKGROUND ================= */
+const DEFAULT_NEBULA_PALETTE=['rgba(139,107,255,0.11)','rgba(77,217,255,0.09)','rgba(255,77,216,0.08)'];
+const SECTOR_NEBULA_PALETTES=[
+  ['rgba(139,107,255,0.11)','rgba(77,217,255,0.09)','rgba(180,140,255,0.08)'],
+  ['rgba(255,90,60,0.14)','rgba(255,150,60,0.10)','rgba(220,60,90,0.10)'],
+  ['rgba(120,140,140,0.10)','rgba(90,110,130,0.09)','rgba(150,160,150,0.07)'],
+  ['rgba(60,80,180,0.13)','rgba(40,60,140,0.11)','rgba(90,110,200,0.08)'],
+  ['rgba(160,40,200,0.14)','rgba(120,20,160,0.12)','rgba(200,60,220,0.09)'],
+  ['rgba(200,20,50,0.16)','rgba(120,10,30,0.13)','rgba(255,60,90,0.10)'],
+];
+function setSectorPalette(sector){
+  const palette=(sector!=null && SECTOR_NEBULA_PALETTES[sector]) ? SECTOR_NEBULA_PALETTES[sector] : DEFAULT_NEBULA_PALETTE;
+  nebulae.forEach((n,i)=>{ n.color=palette[i%palette.length]; });
+}
 function initBackground(){
   stars=[];
   for(let layer=0;layer<3;layer++){
@@ -830,8 +878,7 @@ function initBackground(){
     for(let i=0;i<count;i++){ stars.push({layer,x:Math.random()*VW,y:Math.random()*VH,r:0.6+layer*0.55+Math.random()*0.8,speed:18+layer*40+Math.random()*22,tw:Math.random()*Math.PI*2}); }
   }
   nebulae=[];
-  const palette=['rgba(139,107,255,0.11)','rgba(77,217,255,0.09)','rgba(255,77,216,0.08)'];
-  for(let i=0;i<4;i++){ nebulae.push({x:Math.random()*VW,y:Math.random()*VH,r:180+Math.random()*220,color:palette[i%palette.length],vx:(Math.random()-0.5)*7,vy:(Math.random()-0.5)*5}); }
+  for(let i=0;i<4;i++){ nebulae.push({x:Math.random()*VW,y:Math.random()*VH,r:180+Math.random()*220,color:DEFAULT_NEBULA_PALETTE[i%DEFAULT_NEBULA_PALETTE.length],vx:(Math.random()-0.5)*7,vy:(Math.random()-0.5)*5}); }
 }
 function updateBackground(dt){
   for(const s of stars){ s.y+=s.speed*dt; if(s.y>VH+4){ s.y=-4; s.x=Math.random()*VW; } s.tw+=dt*2; }
@@ -920,13 +967,14 @@ function drawBossSweep(b){
     CTX.fillStyle=grad; CTX.fillRect(s.x-52,s.y-52,104,104);
   }
 }
+function playerShotColor(){ return skinById(P.equippedSkin).c1; }
 function drawBullet(b,friend){
-  CTX.save(); CTX.shadowBlur=10; CTX.shadowColor=friend?'#8ff0ff':'#ff8a4d'; CTX.fillStyle=friend?'#bff5ff':'#ffb14d';
+  CTX.save(); CTX.shadowBlur=10; CTX.shadowColor=friend?playerShotColor():'#ff8a4d'; CTX.fillStyle=friend?playerShotColor():'#ffb14d';
   CTX.beginPath(); CTX.ellipse(b.x,b.y,b.r*0.5,b.r,0,0,Math.PI*2); CTX.fill(); CTX.restore();
 }
 function drawMissile(m){
   CTX.save(); CTX.translate(m.x,m.y); CTX.rotate(Math.atan2(m.vy,m.vx)+Math.PI/2);
-  CTX.shadowBlur=12; CTX.shadowColor=m.friend?'#4dd9ff':'#ff4d5e'; CTX.fillStyle=m.friend?'#8ff0ff':'#ff6a7a';
+  CTX.shadowBlur=12; CTX.shadowColor=m.friend?playerShotColor():'#ff4d5e'; CTX.fillStyle=m.friend?playerShotColor():'#ff6a7a';
   CTX.beginPath(); CTX.moveTo(0,-10); CTX.lineTo(5,8); CTX.lineTo(0,4); CTX.lineTo(-5,8); CTX.closePath(); CTX.fill(); CTX.restore();
 }
 function drawPickup(p){
@@ -1247,6 +1295,25 @@ onClick(document.getElementById('pauseSoundToggleBtn'), toggleSound);
 onClick(document.getElementById('btnSettings'), ()=>{ updateSoundButtons(); showScreen('scr-settings'); });
 onClick(document.getElementById('backFromSettings'), ()=>showScreen('scr-menu'));
 
+const PRIVACY_TEXT="Neon Void ne collecte aucune donnée personnelle. Ta progression (crédits, Noyaux, améliorations, succès) est enregistrée uniquement sur cet appareil, dans le stockage local du navigateur — rien n'est envoyé à un serveur, aucun compte n'est requis. Les publicités et achats intégrés de cette version web sont des aperçus non fonctionnels ; toute intégration réelle (SDK publicitaire tiers, paiement) sera annoncée ici avant la mise en ligne sur l'App Store.";
+const TERMS_TEXT="Neon Void est fourni tel quel, à des fins de divertissement. Ta progression peut être perdue si tu effaces les données de ton navigateur ou changes d'appareil — elle n'est pas sauvegardée ailleurs. Cette version est un aperçu de développement : le contenu et l'équilibrage peuvent évoluer avant la sortie finale.";
+function toggleAccordion(rowId, textId, chevronId, text){
+  const el=document.getElementById(textId);
+  const open = el.style.display==='none';
+  el.style.display = open ? 'block' : 'none';
+  el.textContent = text;
+  document.getElementById(chevronId).textContent = open ? '▴' : '▾';
+}
+document.getElementById('privacyRow').addEventListener('click', ()=>{ sfxClick(); toggleAccordion('privacyRow','privacyText','privacyChevron',PRIVACY_TEXT); });
+document.getElementById('termsRow').addEventListener('click', ()=>{ sfxClick(); toggleAccordion('termsRow','termsText','termsChevron',TERMS_TEXT); });
+onClick(document.getElementById('restorePurchasesBtn'), ()=>showToast("🔒 Restauration des achats réels — disponible dans la version App Store."));
+onClick(document.getElementById('resetProgressBtn'), ()=>{
+  if(confirm("Effacer toute ta progression sur cet appareil ? Cette action est irréversible.")){
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+  }
+});
+
 function openLevelSelect(){
   const cycle=P.ngPlusCycle||0;
   document.getElementById('levelSelectTitle').textContent = cycle>0 ? `Campagne — Nouvelle Partie+${cycle}` : 'Campagne — Sélection de mission';
@@ -1280,6 +1347,7 @@ function launchLevel(idx){
   runCtx=newRunCtx('campaign', lv);
   const cycle=P.ngPlusCycle||0;
   elMissionLabel.textContent = cycle>0 ? `${lv.name} · NG+${cycle}` : lv.name;
+  setSectorPalette(lv.sector);
   beginRun();
 }
 function isInfiniteUnlocked(){ return Math.max(P.unlockedLevel,P.maxLevelEverReached||0)>=5; }
@@ -1369,6 +1437,7 @@ function quitToMenu(){
   state.running=false; stopMusic();
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('bossWrap').classList.remove('show');
+  setSectorPalette(null);
   refreshMenuCredits(); showScreen('scr-menu');
 }
 onClick(document.getElementById('pauseBtn'), ()=>{ if(state.running){ state.paused=true; updateSoundButtons(); showScreen('scr-pause'); } });
@@ -1439,7 +1508,10 @@ function renderAtelier(){
       const card=document.createElement('div'); card.className='perk-card'+(equipped?' equipped':'');
       card.innerHTML=`<div class="name">${perk.name}</div><div class="desc">${perk.desc}</div>`;
       const btn=document.createElement('button'); btn.className='buy-btn'+(equipped?' owned':'');
-      if(!owned){
+      if(perk.earnedVia && !owned){
+        btn.textContent='🔒 Succès'; btn.disabled=true; btn.title=perk.earnedVia;
+        card.querySelector('.desc').innerHTML+=`<br><span style="color:var(--gold); font-size:10px;">${perk.earnedVia}</span>`;
+      } else if(!owned){
         btn.innerHTML=`${perk.cost} <span class="dot hex" style="display:inline-block;vertical-align:middle;"></span>`;
         btn.disabled=P.cores<perk.cost;
         btn.addEventListener('click', ()=>{ sfxClick(); if(P.cores>=perk.cost){ P.cores-=perk.cost; P.modules.push(perk.id); saveProfile(); evaluateAchievements(); renderAtelier(); } });
@@ -1503,13 +1575,13 @@ function renderBoutique(body){
   const secsLeft=Math.max(0, AD_COOLDOWN-Math.floor((Date.now()-(P.lastAdWatch||0))/1000));
   adRow.innerHTML=`<div class="info"><div class="name">Regarder une pub</div><div class="desc">Bonus immédiat de crédits. Rechargement ${AD_COOLDOWN}s.</div></div>`;
   const adBtn=document.createElement('button'); adBtn.className='buy-btn';
-  adBtn.textContent = secsLeft>0 ? `${secsLeft}s` : '+40 cr.';
+  adBtn.textContent = secsLeft>0 ? `${secsLeft}s` : '+120 cr.';
   adBtn.disabled = secsLeft>0;
   adBtn.addEventListener('click', ()=>{
     if(adBtn.disabled) return;
     sfxClick();
     simulateAd(adBtn, ()=>{
-      sfxPowerup(); P.credits+=40; P.lastAdWatch=Date.now(); saveProfile(); refreshMenuCredits(); renderAtelier();
+      sfxPowerup(); P.credits+=120; P.lastAdWatch=Date.now(); saveProfile(); refreshMenuCredits(); renderAtelier();
     });
   });
   adRow.appendChild(adBtn); body.appendChild(adRow);
