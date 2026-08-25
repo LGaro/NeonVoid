@@ -485,6 +485,8 @@ const PERKS=[
  {id:'density', name:'Densité Négative', desc:'Vaisseau compacté : plus il est petit, plus il frappe fort.', cost:55},
  {id:'kinetic', name:'Fureur Cinétique', desc:'Plus vous filez vite, plus vos tirs frappent fort.', cost:65},
  {id:'seeker', name:'Missile Traqueur', desc:'Chaque tir libère un mini-missile traqueur (dégâts réduits).', cost:90},
+ {id:'armor', name:'Blindage Adaptatif', desc:'-20% de dégâts subis, toutes sources.', cost:70},
+ {id:'secondwind', name:'Second Souffle', desc:'Une fois par run, survis à un coup fatal avec 30% de coque.', cost:100},
 ];
 function perkById(id){ return PERKS.find(p=>p.id===id); }
 const SKINS=[
@@ -531,6 +533,7 @@ function getLevel(i){
   const types=['drone'];
   if(i>=2) types.push('corvette');
   if(i>=6) types.push('gunship');
+  if(i>=9) types.push('interceptor');
   if(i>=12) types.push('cruiser');
   const objectiveType=(i%2===0)?'kills':'survive';
   const objectiveValue=objectiveType==='kills' ? Math.round(16+i*2.6) : Math.round(38+i*3.4);
@@ -549,12 +552,14 @@ const ENEMY_DEFS={
   corvette:{hp:20, speed:150, r:16, dmg:14, credit:3, color:'#ff8a4d', zigzag:true},
   gunship:{hp:44, speed:108, r:22, dmg:20, credit:5, color:'#ffb14d', shoots:true, missileChance:0.1},
   cruiser:{hp:64, speed:92, r:26, dmg:24, credit:8, color:'#ff4de0', shoots:true, missileChance:0.32},
+  interceptor:{hp:16, speed:150, r:15, dmg:18, credit:4, color:'#ff0066', dash:true},
 };
 const ENEMY_LORE={
   drone:{name:'Drone Éclaireur', desc:"Automate jetable de l'Éclipse. Seul, inoffensif ; en escadrille, submergeant. Il fonce droit devant sans réfléchir — il n'a pas de quoi réfléchir."},
   corvette:{name:'Corvette Faucheuse', desc:"Plus agile que le drone, elle louvoie pour éviter les tirs. VESTA ignore si c'est de l'intelligence ou un simple défaut de fabrication devenu utile."},
   gunship:{name:'Chasseur Lourd', desc:"Premier modèle de l'Éclipse à embarquer un armement offensif. VESTA soupçonne qu'il a été assemblé à partir de vaisseaux capturés plutôt que construit depuis zéro."},
   cruiser:{name:'Croiseur Sentinelle', desc:"Rare et redoutable : missiles à tête chercheuse, coque renforcée. Sa seule apparition suffit à faire taire les blagues de VESTA — un temps."},
+  interceptor:{name:'Intercepteur', desc:"Fragile mais nerveux : il charge droit sur toi par à-coups. Kae dit qu'il rappelle ses anciens créanciers."},
   boss:{name:"Sentinelle de l'Éclipse", desc:"Le cœur de chaque essaim régional. Rien ne l'égale en dangerosité, sauf peut-être la suivante."},
 };
 const CREW_LORE=[
@@ -617,7 +622,7 @@ let storyPendingSector=-1, storyPendingLevelStart=null;
 
 function makePlayer(){
   return { x:VW/2, y:VH*0.78, r:22, baseR:22, sizeMul:1, speedMul:1,
-    hp:100, maxHp:100, shield:0, maxShield:0, fireCd:0, invuln:0, speed:0,
+    hp:100, maxHp:100, shield:0, maxShield:0, fireCd:0, invuln:0, speed:0, usedSecondWind:false,
     perks:[], baseStats:null, stats:null };
 }
 function creditMultiplier(){ return (player&&player.perks.includes('greed'))?1.5:1; }
@@ -686,12 +691,24 @@ function spawnEnemy(type,difficulty){
   const def=ENEMY_DEFS[type]||ENEMY_DEFS.drone; const r=def.r;
   enemies.push({ type, x:Math.random()*(VW-2*r)+r, y:-r-10, hp:def.hp*difficulty, maxHp:def.hp*difficulty,
     speed:def.speed*(1+(difficulty-1)*0.35), r, dmg:def.dmg, credit:def.credit, color:def.color, t:Math.random()*10,
-    shoots:!!def.shoots, missileChance:def.missileChance||0, fireCd:1+Math.random()*1.4, zigzag:!!def.zigzag });
+    shoots:!!def.shoots, missileChance:def.missileChance||0, fireCd:1+Math.random()*1.4, zigzag:!!def.zigzag,
+    dash:!!def.dash, dashCd:1+Math.random(), dashing:false, dashTimer:0, dashDirX:0 });
   runCtx.enemiesAlive++;
 }
 function updateEnemy(e,dt){
   e.t+=dt;
   if(e.zigzag) e.x+=Math.sin(e.t*2.3)*95*dt;
+  if(e.dash){
+    if(e.dashing){
+      e.x += e.dashDirX*560*dt;
+      e.x = Math.max(e.r, Math.min(VW-e.r, e.x));
+      e.dashTimer -= dt;
+      if(e.dashTimer<=0){ e.dashing=false; e.dashCd=1.6; }
+    } else {
+      e.dashCd -= dt;
+      if(e.dashCd<=0){ e.dashing=true; e.dashTimer=0.3; e.dashDirX=(player.x>=e.x)?1:-1; }
+    }
+  }
   e.y+=e.speed*dt;
   if(e.shoots){
     e.fireCd-=dt;
@@ -841,6 +858,8 @@ function drawEnemy(e){
     CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.9,-e.r*0.1); CTX.lineTo(e.r*0.6,e.r*0.9); CTX.lineTo(0,e.r*0.5); CTX.lineTo(-e.r*0.6,e.r*0.9); CTX.lineTo(-e.r*0.9,-e.r*0.1);
   } else if(e.type==='corvette'){
     CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.7,e.r*0.7); CTX.lineTo(0,e.r*0.25); CTX.lineTo(-e.r*0.7,e.r*0.7);
+  } else if(e.type==='interceptor'){
+    CTX.moveTo(0,-e.r*1.15); CTX.lineTo(e.r*0.4,e.r*0.2); CTX.lineTo(e.r*0.9,e.r*0.85); CTX.lineTo(0,e.r*0.35); CTX.lineTo(-e.r*0.9,e.r*0.85); CTX.lineTo(-e.r*0.4,e.r*0.2);
   } else {
     CTX.moveTo(0,-e.r); CTX.lineTo(e.r*0.75,e.r*0.75); CTX.lineTo(-e.r*0.75,e.r*0.75);
   }
@@ -893,9 +912,16 @@ function drawParticle(pt){ CTX.globalAlpha=Math.max(0,pt.life/pt.maxLife); CTX.f
 /* ================= UPDATE ================= */
 function damagePlayer(amount){
   if(player.invuln>0) return;
+  if(player.perks.includes('armor')) amount*=0.8;
   if(player.shield>0){ player.shield=Math.max(0,player.shield-amount); player.invuln=0.22; sfxHurt(); return; }
   player.hp-=amount; player.invuln=0.5; sfxHurt();
-  if(player.hp<=0){ player.hp=0; onPlayerDeath(); }
+  if(player.hp<=0){
+    if(player.perks.includes('secondwind') && !player.usedSecondWind){
+      player.usedSecondWind=true; player.hp=Math.round(player.maxHp*0.3); player.invuln=1.5; sfxPowerup();
+      return;
+    }
+    player.hp=0; onPlayerDeath();
+  }
 }
 function updateRunObjective(dt){
   runCtx.elapsed+=dt;
@@ -928,7 +954,7 @@ function updateRunObjective(dt){
       const cap=3+runCtx.waveNumber;
       if(runCtx.spawnTimer<=0 && runCtx.enemiesAlive<cap){
         runCtx.spawnTimer=Math.max((runCtx.mode==='chaos'?0.55:0.7)-runCtx.waveNumber*0.02,0.16);
-        const pool=['drone']; if(runCtx.waveNumber>=1)pool.push('corvette'); if(runCtx.waveNumber>=3)pool.push('gunship'); if(runCtx.waveNumber>=5)pool.push('cruiser');
+        const pool=['drone']; if(runCtx.waveNumber>=1)pool.push('corvette'); if(runCtx.waveNumber>=3)pool.push('gunship'); if(runCtx.waveNumber>=4)pool.push('interceptor'); if(runCtx.waveNumber>=5)pool.push('cruiser');
         const type=pool[Math.floor(Math.random()*pool.length)];
         spawnEnemy(type, 1+runCtx.waveNumber*(runCtx.mode==='chaos'?0.15:0.1));
       }
@@ -1101,9 +1127,10 @@ function openCodex(){
   const unlockedTypes=['drone'];
   if(P.unlockedLevel>=2) unlockedTypes.push('corvette');
   if(P.unlockedLevel>=6) unlockedTypes.push('gunship');
+  if(P.unlockedLevel>=9) unlockedTypes.push('interceptor');
   if(P.unlockedLevel>=12) unlockedTypes.push('cruiser');
   if(P.unlockedLevel>=5) unlockedTypes.push('boss');
-  for(const type of ['drone','corvette','gunship','cruiser','boss']){
+  for(const type of ['drone','corvette','gunship','interceptor','cruiser','boss']){
     const lore=ENEMY_LORE[type];
     if(unlockedTypes.includes(type)){ enemiesWrap.appendChild(buildLoreCard(lore.name, null, lore.desc)); }
     else { enemiesWrap.appendChild(buildLoreCard('??? ', null, "Signature non répertoriée. Progresse dans la campagne pour l'identifier.")); }
