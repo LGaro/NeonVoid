@@ -192,7 +192,7 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
     </div>
   </div>
   <div id="bossWrap">
-    <div id="bossName">SENTINELLE DU NULL</div>
+    <div id="bossName">SENTINELLE DE L'ÉCLIPSE</div>
     <div class="bar boss"><div class="bar-fill" id="bossFill"></div></div>
   </div>
 </div>
@@ -250,7 +250,7 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
       <div class="scroll-area" style="max-height:64vh;">
         <p class="small" style="margin:0 0 4px;">L'ÉQUIPAGE</p>
         <div id="codexCrew" class="menu-stack"></div>
-        <p class="small" style="margin:14px 0 4px;">SIGNATURES DU NULL</p>
+        <p class="small" style="margin:14px 0 4px;">SIGNATURES DE L'ÉCLIPSE</p>
         <div id="codexEnemies" class="menu-stack"></div>
       </div>
       <button class="btn ghost" id="backFromCodex" style="margin-top:12px;">Retour</button>
@@ -489,27 +489,27 @@ const SKINS=[
  {id:'toxic', name:'Vipère Toxique', cost:250, c1:'#7dff4d', c2:'#0fb3a0',
    blurb:"Un chasseur de contrebandiers repeint à la va-vite. L'ancien propriétaire ne l'a jamais réclamé, pour une bonne raison."},
  {id:'aurum', name:"Faucon d'Or", cost:400, c1:'#ffcf4d', c2:'#ff8a4d',
-   blurb:"Ancien vaisseau de course reconverti. Trop voyant pour la contrebande, parfait pour attirer l'attention du Null."},
+   blurb:"Ancien vaisseau de course reconverti. Trop voyant pour la contrebande, parfait pour attirer l'attention de l'Éclipse."},
  {id:'violet', name:'Spectre Violet', cost:600, c1:'#c14dff', c2:'#4d6bff',
    blurb:"Camouflage expérimental à moitié fonctionnel. VESTA refuse toujours d'expliquer d'où il vient exactement."},
 ];
 function skinById(id){ return SKINS.find(s=>s.id===id)||SKINS[0]; }
 
 const TOTAL_LEVELS=30, PER_SECTION=5, SECTIONS=TOTAL_LEVELS/PER_SECTION;
-const SECTOR_NAMES=['Ceinture de Kess','Nébuleuse Écarlate','Le Cimetière','Frontière Silencieuse','Abysses de Vahl','Cœur du Null'];
+const SECTOR_NAMES=['Ceinture de Kess','Nébuleuse Écarlate','Le Cimetière','Frontière Silencieuse','Abysses de Vahl',"Cœur de l'Éclipse"];
 const SECTOR_STORY=[
-"La Ceinture de Kess, chez Kae. Le soleil local a déjà perdu 12% de sa luminosité d'après VESTA : les premiers drones du Null sont là pour l'achever. \"On devait juste livrer du fret,\" grommelle Kae. \"Le fret attendra,\" répond VESTA, \"ta maison, un peu moins.\"",
-"La Nébuleuse Écarlate rougeoie de l'énergie que le Null continue de pomper aux étoiles déjà mortes alentour. Miso, le chat clandestin, refuse de sortir de la soute. \"Bon signe,\" note VESTA. \"Mauvais signe,\" corrige Kae, qui recompte ses dettes de jeu plutôt que d'y penser.",
+"La Ceinture de Kess, chez Kae. Le soleil local a déjà perdu 12% de sa luminosité d'après VESTA : les premiers drones de l'Éclipse sont là pour l'achever. \"On devait juste livrer du fret,\" grommelle Kae. \"Le fret attendra,\" répond VESTA, \"ta maison, un peu moins.\"",
+"La Nébuleuse Écarlate rougeoie de l'énergie que l'Éclipse continue de pomper aux étoiles déjà mortes alentour. Miso, le chat clandestin, refuse de sortir de la soute. \"Bon signe,\" note VESTA. \"Mauvais signe,\" corrige Kae, qui recompte ses dettes de jeu plutôt que d'y penser.",
 "Le Cimetière : des centaines de coques vidées de toute énergie, abandonnées en orbite comme des coquilles creuses. VESTA cartographie les débris — et repère la ligne d'alimentation qui relie tout l'essaim à sa source. Kae préférerait ne jamais savoir ce qu'ils vont trouver au bout.",
-"À la Frontière Silencieuse, plus aucune balise ne répond — même les drones du Null semblent s'être tus. \"Zéro signal depuis 40 heures,\" dit VESTA. \"Douze heures de plus que ma tolérance au silence,\" répond Kae en poussant les réacteurs.",
+"À la Frontière Silencieuse, plus aucune balise ne répond — même les drones de l'Éclipse semblent s'être tus. \"Zéro signal depuis 40 heures,\" dit VESTA. \"Douze heures de plus que ma tolérance au silence,\" répond Kae en poussant les réacteurs.",
 "Les Abysses de Vahl : gravité instable, radio muette, une odeur électrique jusque dans le cockpit. VESTA calcule 4% de chances de survie. Kae arrondit à \"largement suffisant\".",
-"Le Cœur du Null : la ruche-mère qui pilote tout l'essaim, gorgée de l'énergie de cent étoiles volées. VESTA se tait, pour la première fois du voyage. Kae serre les commandes : \"On coupe la tête, et Kess survit. On finit ça. Ensemble.\"",
+"Le Cœur de l'Éclipse : la ruche-mère qui pilote tout l'essaim, gorgée de l'énergie de cent étoiles volées. VESTA se tait, pour la première fois du voyage. Kae serre les commandes : \"On coupe la tête, et Kess survit. On finit ça. Ensemble.\"",
 ];
 const INTRO_TEXT=`L'an 2417. Depuis six mois, les colonies de la bordure Est s'éteignent l'une après l'autre — pas détruites : <b>vidées</b>. Leurs soleils faiblissent, puis meurent, et plus personne ne répond sur les fréquences.
 
-On appelle ça LE NULL : un essaim de drones vieux de plusieurs millénaires qui <b>draine l'énergie des étoiles pour se répliquer</b>, encore et encore, sans jamais s'arrêter de lui-même.
+On appelle ça L'ÉCLIPSE : un essaim de drones vieux de plusieurs millénaires qui <b>draine l'énergie des étoiles pour se répliquer</b>, encore et encore, sans jamais s'arrêter de lui-même.
 
-Kae Solari pilotait des cargos de contrebande jusqu'à ce que <b>Kess</b>, son système natal, se retrouve droit sur la trajectoire du Null. Elle a récupéré un prototype militaire abandonné, l'<b>Aurora-9</b>, et son IA de bord VESTA — sens de l'humour à toute épreuve, et une dette de jeu envers Kae qu'elle refuse obstinément de rembourser.
+Kae Solari pilotait des cargos de contrebande jusqu'à ce que <b>Kess</b>, son système natal, se retrouve droit sur la trajectoire de l'Éclipse. Elle a récupéré un prototype militaire abandonné, l'<b>Aurora-9</b>, et son IA de bord VESTA — sens de l'humour à toute épreuve, et une dette de jeu envers Kae qu'elle refuse obstinément de rembourser.
 
 Avec Miso, chat clandestin increvable planqué dans la soute, cet équipage improvisé est désormais tout ce qui se dresse entre Kess et l'extinction.
 
@@ -545,14 +545,14 @@ const ENEMY_DEFS={
   cruiser:{hp:64, speed:92, r:26, dmg:24, credit:8, color:'#ff4de0', shoots:true, missileChance:0.32},
 };
 const ENEMY_LORE={
-  drone:{name:'Drone Éclaireur', desc:"Automate jetable du Null. Seul, inoffensif ; en escadrille, submergeant. Il fonce droit devant sans réfléchir — il n'a pas de quoi réfléchir."},
+  drone:{name:'Drone Éclaireur', desc:"Automate jetable de l'Éclipse. Seul, inoffensif ; en escadrille, submergeant. Il fonce droit devant sans réfléchir — il n'a pas de quoi réfléchir."},
   corvette:{name:'Corvette Faucheuse', desc:"Plus agile que le drone, elle louvoie pour éviter les tirs. VESTA ignore si c'est de l'intelligence ou un simple défaut de fabrication devenu utile."},
-  gunship:{name:'Chasseur Lourd', desc:"Premier modèle du Null à embarquer un armement offensif. VESTA soupçonne qu'il a été assemblé à partir de vaisseaux capturés plutôt que construit depuis zéro."},
+  gunship:{name:'Chasseur Lourd', desc:"Premier modèle de l'Éclipse à embarquer un armement offensif. VESTA soupçonne qu'il a été assemblé à partir de vaisseaux capturés plutôt que construit depuis zéro."},
   cruiser:{name:'Croiseur Sentinelle', desc:"Rare et redoutable : missiles à tête chercheuse, coque renforcée. Sa seule apparition suffit à faire taire les blagues de VESTA — un temps."},
-  boss:{name:'Sentinelle du Null', desc:"Le cœur de chaque essaim régional. Rien ne l'égale en dangerosité, sauf peut-être la suivante."},
+  boss:{name:"Sentinelle de l'Éclipse", desc:"Le cœur de chaque essaim régional. Rien ne l'égale en dangerosité, sauf peut-être la suivante."},
 };
 const CREW_LORE=[
-  {name:'Kae Solari', role:'Pilote', desc:"Ex-contrebandière, dettes de jeu, sens de l'à-propos discutable. Pilote l'Aurora-9 depuis que Kess, son système natal, s'est retrouvé sur la route du Null."},
+  {name:'Kae Solari', role:'Pilote', desc:"Ex-contrebandière, dettes de jeu, sens de l'à-propos discutable. Pilote l'Aurora-9 depuis que Kess, son système natal, s'est retrouvé sur la route de l'Éclipse."},
   {name:'VESTA', role:"IA de bord", desc:"Sarcastique, précise au dixième de pourcent près, et débitrice envers Kae d'une dette de jeu qu'elle nie obstinément."},
   {name:'Miso', role:'Passager clandestin', desc:"Chat increvable planqué dans la soute depuis le premier jour. Personne ne sait comment il est monté à bord. Personne n'ose le débarquer."},
 ];
@@ -879,7 +879,7 @@ function updateRunObjective(dt){
     if(runCtx.waveTimer<=0){
       runCtx.waveTimer=13; runCtx.waveNumber++; runCtx.wavesSinceBoss++;
       if(runCtx.mode==='chaos' && runCtx.wavesSinceBoss>=runCtx.bossEveryWaves && !runCtx.boss){
-        runCtx.wavesSinceBoss=0; spawnBoss('SENTINELLE DU NULL', Math.round(220+runCtx.waveNumber*65));
+        runCtx.wavesSinceBoss=0; spawnBoss("SENTINELLE DE L'ÉCLIPSE", Math.round(220+runCtx.waveNumber*65));
       }
     }
     if(!runCtx.boss){
@@ -1150,13 +1150,17 @@ function showEndScreen(success,score,credits,cores){
   document.getElementById('endRetry').textContent=(runCtx.mode==='campaign'&&success)?'Mission suivante':'Réessayer';
   showScreen('scr-end');
 }
-onClick(document.getElementById('endDoubleAd'), ()=>{
-  if(endAdUsed) return;
-  endAdUsed=true;
-  P.credits+=endBaseCredits; saveProfile();
-  document.getElementById('endCredits').innerHTML=`<span class="dot"></span>+${endBaseCredits*2}`;
+document.getElementById('endDoubleAd').addEventListener('click', ()=>{
   const adBtn=document.getElementById('endDoubleAd');
-  adBtn.disabled=true; adBtn.textContent='✓ Crédits doublés';
+  if(endAdUsed || adBtn.disabled) return;
+  sfxClick();
+  simulateAd(adBtn, ()=>{
+    endAdUsed=true;
+    P.credits+=endBaseCredits; saveProfile();
+    document.getElementById('endCredits').innerHTML=`<span class="dot"></span>+${endBaseCredits*2}`;
+    sfxPowerup();
+    adBtn.disabled=true; adBtn.textContent='✓ Crédits doublés';
+  });
 });
 onClick(document.getElementById('endRetry'), ()=>{
   if(runCtx.mode==='campaign'){ let idx=runCtx.level.index; if(endWasSuccess) idx=Math.min(idx+1,TOTAL_LEVELS-1); tryLaunchLevel(idx); }
@@ -1277,6 +1281,22 @@ function renderAtelier(){
   }
 }
 
+function simulateAd(btn, onDone, durationMs){
+  durationMs = durationMs || 2400;
+  btn.disabled = true;
+  const start = Date.now();
+  const step = 100;
+  const paint = (pct)=>{
+    btn.innerHTML = `<span style="display:inline-flex; align-items:center; gap:6px;">📺 Pub<span style="display:inline-block; width:36px; height:6px; background:rgba(0,0,0,.35); border-radius:3px; overflow:hidden;"><span style="display:block; height:100%; width:${pct}%; background:var(--void);"></span></span></span>`;
+  };
+  paint(0);
+  const timer = setInterval(()=>{
+    const elapsed = Date.now()-start;
+    const pct = Math.min(100, Math.round(elapsed/durationMs*100));
+    paint(pct);
+    if(elapsed >= durationMs){ clearInterval(timer); onDone(); }
+  }, step);
+}
 const AD_COOLDOWN=60;
 function renderBoutique(body){
   const coreNote=document.createElement('p'); coreNote.className='small'; coreNote.style.marginBottom='10px';
@@ -1289,7 +1309,11 @@ function renderBoutique(body){
   adBtn.textContent = secsLeft>0 ? `${secsLeft}s` : '+40 cr.';
   adBtn.disabled = secsLeft>0;
   adBtn.addEventListener('click', ()=>{
-    sfxPowerup(); P.credits+=40; P.lastAdWatch=Date.now(); saveProfile(); refreshMenuCredits(); renderAtelier();
+    if(adBtn.disabled) return;
+    sfxClick();
+    simulateAd(adBtn, ()=>{
+      sfxPowerup(); P.credits+=40; P.lastAdWatch=Date.now(); saveProfile(); refreshMenuCredits(); renderAtelier();
+    });
   });
   adRow.appendChild(adBtn); body.appendChild(adRow);
 
