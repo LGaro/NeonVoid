@@ -252,6 +252,8 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
         <div id="codexCrew" class="menu-stack"></div>
         <p class="small" style="margin:14px 0 4px;">SIGNATURES DE L'ÉCLIPSE</p>
         <div id="codexEnemies" class="menu-stack"></div>
+        <p class="small" style="margin:14px 0 4px;" id="codexAchTitle">SUCCÈS</p>
+        <div id="codexAchievements" class="menu-stack"></div>
       </div>
       <button class="btn ghost" id="backFromCodex" style="margin-top:12px;">Retour</button>
     </div>
@@ -368,6 +370,8 @@ function defaultProfile(){
     modules:[], equippedModules:[], ownedSkins:['default'], equippedSkin:'default',
     hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0,
     sectorsSeen:[false,false,false,false,false,false],
+    stats:{totalKills:0, totalBossKills:0, flawlessClears:0, bestInfiniteSeconds:0},
+    achievements:{},
   };
 }
 function loadProfile(){
@@ -377,7 +381,9 @@ function loadProfile(){
     const parsed=JSON.parse(raw);
     const d=defaultProfile();
     d.upgrades=Object.assign(d.upgrades, parsed.upgrades||{});
-    return Object.assign(d, parsed, {upgrades:d.upgrades});
+    d.stats=Object.assign(d.stats, parsed.stats||{});
+    d.achievements=Object.assign(d.achievements, parsed.achievements||{});
+    return Object.assign(d, parsed, {upgrades:d.upgrades, stats:d.stats, achievements:d.achievements});
   }catch(e){ return defaultProfile(); }
 }
 let P=loadProfile();
@@ -557,6 +563,41 @@ const CREW_LORE=[
   {name:'Miso', role:'Passager clandestin', desc:"Chat increvable planqué dans la soute depuis le premier jour. Personne ne sait comment il est monté à bord. Personne n'ose le débarquer."},
 ];
 
+const ACHIEVEMENTS=[
+  {id:'first_blood', name:'Premier Sang', desc:'Élimine ton premier ennemi.', reward:{credits:10}, check:P=>P.stats.totalKills>=1, progress:P=>[P.stats.totalKills,1]},
+  {id:'squad_wipe', name:'Escouade Décimée', desc:'Élimine 100 ennemis au total.', reward:{credits:50}, check:P=>P.stats.totalKills>=100, progress:P=>[P.stats.totalKills,100]},
+  {id:'sky_scourge', name:'Fléau du Ciel', desc:'Élimine 500 ennemis au total.', reward:{cores:3}, check:P=>P.stats.totalKills>=500, progress:P=>[P.stats.totalKills,500]},
+  {id:'sentinel_hunter', name:'Chasseur de Sentinelles', desc:'Vaincs ton premier boss.', reward:{credits:30}, check:P=>P.stats.totalBossKills>=1, progress:P=>[P.stats.totalBossKills,1]},
+  {id:'eclipse_executioner', name:"Bourreau de l'Éclipse", desc:'Vaincs 10 boss au total.', reward:{cores:5}, check:P=>P.stats.totalBossKills>=10, progress:P=>[P.stats.totalBossKills,10]},
+  {id:'flawless', name:'Sans Égratignure', desc:'Termine une mission de campagne sans perdre un point de vie.', reward:{cores:4}, check:P=>P.stats.flawlessClears>=1, progress:P=>[P.stats.flawlessClears,1]},
+  {id:'survivor', name:'Survivant', desc:'Atteins 5 minutes en une seule run de Vague Infinie.', reward:{credits:40}, check:P=>P.stats.bestInfiniteSeconds>=300, progress:P=>[Math.floor(P.stats.bestInfiniteSeconds),300]},
+  {id:'chaos_heart', name:'Cœur du Chaos', desc:'Atteins 2000 points en Surcharge Neurale.', reward:{cores:6}, check:P=>P.hiChaos>=2000, progress:P=>[P.hiChaos,2000]},
+  {id:'collector', name:'Collectionneur', desc:'Possède tous les vaisseaux.', reward:{cores:5}, check:P=>P.ownedSkins.length>=SKINS.length, progress:P=>[P.ownedSkins.length,SKINS.length]},
+  {id:'full_arsenal', name:'Arsenal Complet', desc:'Débloque tous les modules.', reward:{cores:10}, check:P=>P.modules.length>=PERKS.length, progress:P=>[P.modules.length,PERKS.length]},
+];
+function evaluateAchievements(){
+  const unlocked=[];
+  for(const a of ACHIEVEMENTS){
+    if(P.achievements[a.id]) continue;
+    if(a.check(P)){
+      P.achievements[a.id]=true;
+      if(a.reward.credits) P.credits+=a.reward.credits;
+      if(a.reward.cores) P.cores+=a.reward.cores;
+      unlocked.push(a);
+    }
+  }
+  if(unlocked.length){
+    saveProfile();
+    unlocked.forEach((a,i)=>{
+      setTimeout(()=>{
+        const rewardTxt=a.reward.credits?`+${a.reward.credits} cr.`:`+${a.reward.cores} Noyaux`;
+        showToast(`🏆 Succès débloqué : ${a.name} (${rewardTxt})`);
+      }, i*2700);
+    });
+  }
+  return unlocked;
+}
+
 /* ================= INPUT ================= */
 const keys={};
 window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true; });
@@ -674,7 +715,7 @@ function killEnemy(idx){
   spawnExplosion(e.x,e.y,1);
   spawnPickup(e.x,e.y,e.credit);
   sfxExplosion();
-  enemies.splice(idx,1); runCtx.enemiesAlive--; runCtx.kills++;
+  enemies.splice(idx,1); runCtx.enemiesAlive--; runCtx.kills++; P.stats.totalKills++;
   if(runCtx.mode==='campaign' && !runCtx.objectiveMet && runCtx.level.objectiveType==='kills' && runCtx.kills>=runCtx.level.objectiveValue){
     completeObjective();
   }
@@ -901,6 +942,7 @@ function completeObjective(){
   else { onLevelWon(); }
 }
 function onBossDefeated(){
+  P.stats.totalBossKills++;
   if(runCtx.mode==='campaign'){ runCtx.coresEarned=(runCtx.coresEarned||0)+2+runCtx.level.sector; onLevelWon(); }
   else if(runCtx.mode==='chaos'){ runCtx.creditsEarned+=Math.round(60*creditMultiplier()); runCtx.coresEarned=(runCtx.coresEarned||0)+2; runCtx.score+=300; }
 }
@@ -915,10 +957,15 @@ function endRun(success){
   P.credits+=total;
   if(runCtx.mode==='campaign' && success){
     P.unlockedLevel=Math.max(P.unlockedLevel, runCtx.level.index+1);
+    if(player.hp>=player.maxHp) P.stats.flawlessClears++;
   }
-  if(runCtx.mode==='infinite'){ P.hiInfinite=Math.max(P.hiInfinite, runCtx.score); }
+  if(runCtx.mode==='infinite'){
+    P.hiInfinite=Math.max(P.hiInfinite, runCtx.score);
+    P.stats.bestInfiniteSeconds=Math.max(P.stats.bestInfiniteSeconds, runCtx.elapsed);
+  }
   if(runCtx.mode==='chaos'){ P.hiChaos=Math.max(P.hiChaos, runCtx.score); }
   saveProfile();
+  evaluateAchievements();
   showEndScreen(success, runCtx.score, total, coresGained);
 }
 function update(dt){
@@ -1061,6 +1108,21 @@ function openCodex(){
     if(unlockedTypes.includes(type)){ enemiesWrap.appendChild(buildLoreCard(lore.name, null, lore.desc)); }
     else { enemiesWrap.appendChild(buildLoreCard('??? ', null, "Signature non répertoriée. Progresse dans la campagne pour l'identifier.")); }
   }
+  const achWrap=document.getElementById('codexAchievements'); achWrap.innerHTML='';
+  const unlockedCount=ACHIEVEMENTS.filter(a=>P.achievements[a.id]).length;
+  document.getElementById('codexAchTitle').textContent=`SUCCÈS (${unlockedCount}/${ACHIEVEMENTS.length})`;
+  ACHIEVEMENTS.forEach(a=>{
+    const done=!!P.achievements[a.id];
+    const [cur,target]=a.progress(P);
+    const rewardTxt=a.reward.credits?`+${a.reward.credits} cr.`:`+${a.reward.cores} Noyaux`;
+    const card=buildLoreCard(
+      (done?'✅ ':'🔒 ')+a.name,
+      rewardTxt,
+      done ? a.desc : `${a.desc} (${Math.min(cur,target)}/${target})`
+    );
+    if(!done) card.style.opacity='.65';
+    achWrap.appendChild(card);
+  });
   showScreen('scr-codex');
 }
 onClick(document.getElementById('btnCodex'), openCodex);
@@ -1245,7 +1307,7 @@ function renderAtelier(){
       if(!owned){
         btn.innerHTML=`${perk.cost} <span class="dot hex" style="display:inline-block;vertical-align:middle;"></span>`;
         btn.disabled=P.cores<perk.cost;
-        btn.addEventListener('click', ()=>{ sfxClick(); if(P.cores>=perk.cost){ P.cores-=perk.cost; P.modules.push(perk.id); saveProfile(); renderAtelier(); } });
+        btn.addEventListener('click', ()=>{ sfxClick(); if(P.cores>=perk.cost){ P.cores-=perk.cost; P.modules.push(perk.id); saveProfile(); evaluateAchievements(); renderAtelier(); } });
       } else {
         btn.textContent=equipped?'Déséquiper':'Équiper';
         btn.disabled = !equipped && P.equippedModules.length>=MAX_EQUIPPED_MODULES;
@@ -1271,7 +1333,7 @@ function renderAtelier(){
       btn.addEventListener('click', ()=>{
         sfxClick();
         if(owned){ P.equippedSkin=skin.id; } else if(P.credits>=skin.cost){ P.credits-=skin.cost; P.ownedSkins.push(skin.id); P.equippedSkin=skin.id; }
-        saveProfile(); renderAtelier();
+        saveProfile(); evaluateAchievements(); renderAtelier();
       });
       card.appendChild(btn); grid.appendChild(card);
     });
