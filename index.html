@@ -280,7 +280,7 @@ p.lede{font-size:15px; line-height:1.5; color:var(--ghost); margin:0;}
   <!-- LEVEL SELECT -->
   <section class="screen" id="scr-levels">
     <div class="panel">
-      <h2 class="section-title">Campagne — Sélection de mission</h2>
+      <h2 class="section-title" id="levelSelectTitle">Campagne — Sélection de mission</h2>
       <div class="scroll-area" style="max-height:56vh;">
         <div id="sectorBlocks"></div>
       </div>
@@ -368,7 +368,7 @@ function defaultProfile(){
     credits:0, cores:0, unlockedLevel:0,
     upgrades:{damage:0,fireRate:0,health:0,shield:0,magnet:0},
     modules:[], equippedModules:[], ownedSkins:['default'], equippedSkin:'default',
-    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0,
+    hiInfinite:0, hiChaos:0, storySeen:false, lastAdWatch:0, ngPlusCycle:0, maxLevelEverReached:0,
     sectorsSeen:[false,false,false,false,false,false],
     stats:{totalKills:0, totalBossKills:0, flawlessClears:0, bestInfiniteSeconds:0},
     achievements:{},
@@ -529,7 +529,8 @@ function getLevel(i){
   const sector=Math.floor(i/PER_SECTION);
   const missionInSector=(i%PER_SECTION)+1;
   const isBoss=missionInSector===PER_SECTION;
-  const difficulty=i===0 ? 0.65 : 1+i*0.17;
+  const ngMul=1+(P.ngPlusCycle||0)*0.35;
+  const difficulty=(i===0 ? 0.65 : 1+i*0.17)*ngMul;
   const types=['drone'];
   if(i>=2) types.push('corvette');
   if(i>=6) types.push('gunship');
@@ -543,7 +544,7 @@ function getLevel(i){
     difficulty, types,
     spawnInterval:i===0 ? 1.0 : Math.max(0.76-i*0.016,0.2),
     objectiveType, objectiveValue,
-    bossHealth:Math.round(260+i*40),
+    bossHealth:Math.round((260+i*40)*ngMul),
   };
 }
 
@@ -969,20 +970,24 @@ function completeObjective(){
 }
 function onBossDefeated(){
   P.stats.totalBossKills++;
-  if(runCtx.mode==='campaign'){ runCtx.coresEarned=(runCtx.coresEarned||0)+2+runCtx.level.sector; onLevelWon(); }
+  if(runCtx.mode==='campaign'){ runCtx.coresEarned=(runCtx.coresEarned||0)+Math.round((2+runCtx.level.sector)*(1+(P.ngPlusCycle||0)*0.25)); onLevelWon(); }
   else if(runCtx.mode==='chaos'){ runCtx.creditsEarned+=Math.round(60*creditMultiplier()); runCtx.coresEarned=(runCtx.coresEarned||0)+2; runCtx.score+=300; }
 }
 function onLevelWon(){ endRun(true); }
 function onPlayerDeath(){ endRun(false); }
 function endRun(success){
   state.running=false; stopMusic();
+  const ngMul=1+(P.ngPlusCycle||0)*0.25;
   let bonus = runCtx.mode==='campaign' ? (success?Math.round(runCtx.score*0.32+25):Math.round(runCtx.score*0.12)) : Math.round(runCtx.score*0.16);
+  bonus = Math.round(bonus*ngMul);
   const coresGained = runCtx.coresEarned||0;
   P.cores += coresGained;
   const total=runCtx.creditsEarned+bonus;
   P.credits+=total;
+  let campaignComplete=false;
   if(runCtx.mode==='campaign' && success){
-    P.unlockedLevel=Math.max(P.unlockedLevel, runCtx.level.index+1);
+    if(runCtx.level.index===TOTAL_LEVELS-1){ campaignComplete=true; P.maxLevelEverReached=TOTAL_LEVELS; }
+    else { P.unlockedLevel=Math.max(P.unlockedLevel, runCtx.level.index+1); P.maxLevelEverReached=Math.max(P.maxLevelEverReached, P.unlockedLevel); }
     if(player.hp>=player.maxHp) P.stats.flawlessClears++;
   }
   if(runCtx.mode==='infinite'){
@@ -992,7 +997,7 @@ function endRun(success){
   if(runCtx.mode==='chaos'){ P.hiChaos=Math.max(P.hiChaos, runCtx.score); }
   saveProfile();
   evaluateAchievements();
-  showEndScreen(success, runCtx.score, total, coresGained);
+  showEndScreen(success, runCtx.score, total, coresGained, campaignComplete);
 }
 function update(dt){
   updatePlayerMovement(dt);
@@ -1124,12 +1129,13 @@ function openCodex(){
   const crewWrap=document.getElementById('codexCrew'); crewWrap.innerHTML='';
   CREW_LORE.forEach(c=>crewWrap.appendChild(buildLoreCard(c.name, c.role, c.desc)));
   const enemiesWrap=document.getElementById('codexEnemies'); enemiesWrap.innerHTML='';
+  const reached=Math.max(P.unlockedLevel,P.maxLevelEverReached||0);
   const unlockedTypes=['drone'];
-  if(P.unlockedLevel>=2) unlockedTypes.push('corvette');
-  if(P.unlockedLevel>=6) unlockedTypes.push('gunship');
-  if(P.unlockedLevel>=9) unlockedTypes.push('interceptor');
-  if(P.unlockedLevel>=12) unlockedTypes.push('cruiser');
-  if(P.unlockedLevel>=5) unlockedTypes.push('boss');
+  if(reached>=2) unlockedTypes.push('corvette');
+  if(reached>=6) unlockedTypes.push('gunship');
+  if(reached>=9) unlockedTypes.push('interceptor');
+  if(reached>=12) unlockedTypes.push('cruiser');
+  if(reached>=5) unlockedTypes.push('boss');
   for(const type of ['drone','corvette','gunship','interceptor','cruiser','boss']){
     const lore=ENEMY_LORE[type];
     if(unlockedTypes.includes(type)){ enemiesWrap.appendChild(buildLoreCard(lore.name, null, lore.desc)); }
@@ -1156,6 +1162,8 @@ onClick(document.getElementById('btnCodex'), openCodex);
 onClick(document.getElementById('backFromCodex'), ()=>showScreen('scr-menu'));
 
 function openLevelSelect(){
+  const cycle=P.ngPlusCycle||0;
+  document.getElementById('levelSelectTitle').textContent = cycle>0 ? `Campagne — Nouvelle Partie+${cycle}` : 'Campagne — Sélection de mission';
   const wrap=document.getElementById('sectorBlocks'); wrap.innerHTML='';
   for(let sec=0; sec<SECTIONS; sec++){
     const h=document.createElement('div');
@@ -1184,11 +1192,12 @@ function tryLaunchLevel(idx){
 function launchLevel(idx){
   const lv=getLevel(idx);
   runCtx=newRunCtx('campaign', lv);
-  elMissionLabel.textContent=lv.name;
+  const cycle=P.ngPlusCycle||0;
+  elMissionLabel.textContent = cycle>0 ? `${lv.name} · NG+${cycle}` : lv.name;
   beginRun();
 }
-function isInfiniteUnlocked(){ return P.unlockedLevel>=5; }
-function isChaosUnlocked(){ return P.unlockedLevel>=10; }
+function isInfiniteUnlocked(){ return Math.max(P.unlockedLevel,P.maxLevelEverReached||0)>=5; }
+function isChaosUnlocked(){ return Math.max(P.unlockedLevel,P.maxLevelEverReached||0)>=10; }
 function openModes(){
   document.getElementById('scoreInfinite').textContent=P.hiInfinite;
   document.getElementById('scoreChaos').textContent=P.hiChaos;
@@ -1219,16 +1228,22 @@ function beginRun(){
 }
 
 let endWasSuccess=false;
-let endBaseCredits=0, endAdUsed=false;
-function showEndScreen(success,score,credits,cores){
+let endBaseCredits=0, endAdUsed=false, endCampaignComplete=false;
+function showEndScreen(success,score,credits,cores,campaignComplete){
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('bossWrap').classList.remove('show');
   endWasSuccess=success;
+  endCampaignComplete=!!campaignComplete;
   endBaseCredits=credits; endAdUsed=false;
-  document.getElementById('endTitle').textContent = success?'Mission accomplie':'Vaisseau perdu';
-  document.getElementById('endText').textContent = success
-    ? 'VESTA : "Coque intacte, ou presque. On continue."'
-    : 'VESTA : "Signal perdu... récupération en cours. On retente ?"';
+  if(endCampaignComplete){
+    document.getElementById('endTitle').textContent="L'Éclipse est vaincue";
+    document.getElementById('endText').textContent='Kae : "C\'est fait. Kess respire encore." VESTA : "Techniquement... il reste d\'autres essaims ailleurs. On repart pour un tour ?"';
+  } else {
+    document.getElementById('endTitle').textContent = success?'Mission accomplie':'Vaisseau perdu';
+    document.getElementById('endText').textContent = success
+      ? 'VESTA : "Coque intacte, ou presque. On continue."'
+      : 'VESTA : "Signal perdu... récupération en cours. On retente ?"';
+  }
   document.getElementById('endScore').textContent=score;
   document.getElementById('endCredits').innerHTML=`<span class="dot"></span>+${credits}`;
   document.getElementById('endCoresValue').textContent=`+${cores||0}`;
@@ -1236,8 +1251,14 @@ function showEndScreen(success,score,credits,cores){
   document.getElementById('endCoresHint').style.display = (cores>0) ? 'block' : 'none';
   const adBtn=document.getElementById('endDoubleAd');
   adBtn.style.display='block'; adBtn.disabled=false; adBtn.textContent='🎬 Regarder une pub pour doubler ces crédits';
-  document.getElementById('endRetry').textContent=(runCtx.mode==='campaign'&&success)?'Mission suivante':'Réessayer';
+  document.getElementById('endRetry').textContent = endCampaignComplete ? 'Nouvelle Partie+' : ((runCtx.mode==='campaign'&&success)?'Mission suivante':'Réessayer');
   showScreen('scr-end');
+}
+function startNewGamePlus(){
+  P.ngPlusCycle=(P.ngPlusCycle||0)+1;
+  P.unlockedLevel=0;
+  saveProfile();
+  quitToMenu();
 }
 document.getElementById('endDoubleAd').addEventListener('click', ()=>{
   const adBtn=document.getElementById('endDoubleAd');
@@ -1252,6 +1273,7 @@ document.getElementById('endDoubleAd').addEventListener('click', ()=>{
   });
 });
 onClick(document.getElementById('endRetry'), ()=>{
+  if(endCampaignComplete){ startNewGamePlus(); return; }
   if(runCtx.mode==='campaign'){ let idx=runCtx.level.index; if(endWasSuccess) idx=Math.min(idx+1,TOTAL_LEVELS-1); tryLaunchLevel(idx); }
   else if(runCtx.mode==='infinite'){ runCtx=newRunCtx('infinite'); elMissionLabel.textContent='Vague Infinie'; beginRun(); }
   else { runCtx=newRunCtx('chaos'); elMissionLabel.textContent='Surcharge Neurale'; beginRun(); }
